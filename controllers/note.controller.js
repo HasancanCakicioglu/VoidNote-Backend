@@ -42,7 +42,7 @@ export const createNote = async (req, res, next) => {
         session.endSession();
         res.status(201).json({ message: 'Note created successfully' });
     } catch (error) {
-        await session.commitTransaction();
+        await session.abortTransaction();
         session.endSession();
         next(error);
     }
@@ -75,7 +75,7 @@ export const deleteNote = async (req, res, next) => {
     const { id } = matchedData(req, { locations: ['params'] });
 
     const session = await mongoose.startSession();
-    
+
 
     try {
         session.startTransaction();
@@ -109,7 +109,7 @@ export const deleteNote = async (req, res, next) => {
         session.endSession();
         res.status(200).json('Note has been deleted...');
     } catch (error) {
-        await session.commitTransaction();
+        await session.abortTransaction();
         session.endSession();
         next(error);
     }
@@ -130,18 +130,42 @@ export const updateNote = async (req, res, next) => {
         if (note.userID.toString() !== req.user.id) {
             return next(errorHandler(403, 'You can update only your note!'));
         }
-        const updatedNote = await Note.findByIdAndUpdate(
-            id,
-            {
-                $set: {
-                    title,
-                    content,
-                    styleModel,
-                },
-            },
-            { new: true }
-        );
-        res.status(200).json(updatedNote);
+
+        if (title && title !== note.title) {
+            const session = await mongoose.startSession();
+            try {
+                session.startTransaction();
+
+                const updatedNote = await note.updateOne({ title, content, styleModel }, { session, new: true });
+
+                if (!updatedNote) {
+                    throw new Error('User update failed');
+                }
+
+                const updateResult = await User.updateOne(
+                    { _id: req.user.id, 'notes._id': id },
+                    { $set: { 'notes.$.title': title } },
+                    { session }
+                );
+
+                if (!updateResult.acknowledged || updateResult.modifiedCount !== 1) {
+                    throw new Error('User update failed');
+                }
+
+                await session.commitTransaction();
+                session.endSession();
+                return res.status(200).json("Note has been updated...");
+
+            } catch (error) {
+                await session.abortTransaction();
+                session.endSession();
+                return next(errorHandler(500, 'Note update failed'));
+            }
+        } else {
+            await note.updateOne({ title, content, styleModel });
+            return res.status(200).json("Note has been updated...");
+        }
+
     } catch (error) {
         next(error);
     }
