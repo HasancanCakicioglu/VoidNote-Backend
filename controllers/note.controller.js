@@ -82,15 +82,11 @@ export const deleteNote = async (req, res, next) => {
 
         const note = await Note.findById(id).session(session);
         if (!note) {
-            await session.abortTransaction();
-            session.endSession();
-            return next(errorHandler(404, 'Note not found'));
+            throw new Error('Note not found');
         }
 
         if (note.userID.toString() !== req.user.id) {
-            await session.abortTransaction();
-            session.endSession();
-            return next(errorHandler(403, 'You can delete only your note!'));
+            throw new Error('You can delete only your note!');
         }
 
         await Note.deleteOne({ _id: id }).session(session);
