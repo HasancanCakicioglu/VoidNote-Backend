@@ -1,5 +1,12 @@
 import mongoose from 'mongoose';
 
+// Define treeNoteChildrenSchema first
+const treeNoteChildrenSchema = new mongoose.Schema({
+  _id: { type: mongoose.Schema.Types.ObjectId },
+  title: { type: String },
+  children: [this]
+}, { _id: false });
+
 const userSchema = new mongoose.Schema({
   username: { type: String, required: true},
   password: { type: String, required: true },
@@ -13,7 +20,7 @@ const userSchema = new mongoose.Schema({
     { _id: { type: mongoose.Schema.Types.ObjectId }, title: { type: String } }
   ],
   treeNotes: [
-    { _id: mongoose.Schema.Types.ObjectId, title: String }
+    treeNoteChildrenSchema
   ],
   todos: [
     { _id: mongoose.Schema.Types.ObjectId, title: String }
@@ -22,6 +29,7 @@ const userSchema = new mongoose.Schema({
     { _id: mongoose.Schema.Types.ObjectId, title: String }
   ]
 }, { timestamps: true });
+
 
 
 const User = mongoose.model('User', userSchema);

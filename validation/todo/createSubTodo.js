@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 
-export const noteIdValidationSchema = {
+export const updateTodoValidationSchema = {
     id: {
         in: ['params'],
         custom: {
@@ -9,5 +9,5 @@ export const noteIdValidationSchema = {
             },
             errorMessage: 'ID must be a valid ObjectId'
         }
-    }
+    },
 };

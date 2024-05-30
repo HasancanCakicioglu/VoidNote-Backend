@@ -1,8 +1,9 @@
 import mongoose from 'mongoose';
+import styleSchema from './style.model.js';
 
 // Alt Todos Şeması
 const subTodoSchema = new mongoose.Schema({
-    content: { type: String, required: true },
+    content: { type: String , default: ''},
     styleModel: styleSchema,
     completed: { type: Boolean, default: false },
     priority: { type: Number, default: 1 } // 1: Low, 2: Medium, 3: High
@@ -20,4 +21,4 @@ const todoSchema = new mongoose.Schema({
 const SubTodo = mongoose.model('SubTodo', subTodoSchema);
 const Todo = mongoose.model('Todo', todoSchema);
 
-export default Todo;
+export { Todo,SubTodo };

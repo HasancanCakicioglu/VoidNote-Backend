@@ -2,6 +2,8 @@ import express from 'express';
 import userRoutes from './routes/user.route.js';
 import authRoutes from './routes/auth.route.js';
 import notesRoutes from './routes/note.route.js';
+import todoRoutes from './routes/todo.route.js';
+import treeRoutes from './routes/tree.route.js';
 import cookieParser from 'cookie-parser';
 import connectMongoDB from './config/mongoose.js';
 import helmet from "helmet";
@@ -42,6 +44,8 @@ app.use('/api/user', userRoutes);
 app.use('/api/auth', authRoutes);
 
 app.use("/api/note", notesRoutes);
+app.use("/api/todo", todoRoutes);
+app.use("/api/tree", treeRoutes);
 
 
 // Error handling middleware

@@ -3,23 +3,12 @@ import mongoose from 'mongoose';
 const treeNoteSchema = new mongoose.Schema({
     userID: { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'User' },
     title: { type: String, required: true },
-    content: { type: String, required: true },
+    content: { type: String, required: true ,default: ''},
     styles: styleSchema,
-    depth: { type: Number, required: true },
-    branch: [branchSchema]
+    parent: { type: mongoose.Schema.Types.ObjectId, ref: 'Tree' },
 }, { timestamps: true });
 
 
-const branchSchema = new mongoose.Schema({
-    title: { type: String, required: true },
-    branch: [{
-        _id: mongoose.Schema.Types.ObjectId,
-        title: {type: String, required: true},
-        branch: [branchSchema],  
-        order: {type: Number, required: true},
-        required: false
-    }],
-    order: { type: Number, required: true }
-});
+const Tree = mongoose.model('Tree', treeNoteSchema);
 
-export default treeNoteSchema;
+export default Tree;
