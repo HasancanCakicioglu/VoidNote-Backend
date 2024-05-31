@@ -6,28 +6,19 @@ import User from '../models/user.model.js';
 
 
 export const createNote = async (req, res, next) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-        return next(errorHandler(400, 'Validation failed', errors.array()));
-    }
-    const { title, content, styleModel } = matchedData(req);
-
     const session = await mongoose.startSession();
-
     try {
         session.startTransaction();
         const createdNote = await Note.create([{
             userID: req.user.id,
-            title,
-            content,
-            styleModel,
         }], { session });
 
         if (!createdNote || createdNote.length === 0) {
-            throw new Error('Note creation failed');
+            throw errorHandler(500, 'Note creation failed');
         }
 
         const note = createdNote[0];
+
         const updateResult = await User.updateOne(
             { _id: req.user.id },
             { $push: { notes: { _id: note._id, title: note.title } } },
@@ -35,12 +26,12 @@ export const createNote = async (req, res, next) => {
         );
 
         if (!updateResult.acknowledged || updateResult.modifiedCount !== 1 || updateResult.matchedCount !== 1) {
-            throw new Error('Note creation failed');
+            throw errorHandler(500, 'An error occurred while updating the user\'s notes section.');
         }
 
         await session.commitTransaction();
         session.endSession();
-        res.status(201).json({ message: 'Note created successfully' });
+        res.status(201).json({ message: 'Note created successfully' ,data:note});
     } catch (error) {
         await session.abortTransaction();
         session.endSession();
@@ -53,14 +44,17 @@ export const getNote = async (req, res, next) => {
 
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-        return next(errorHandler(400, 'Validation failed', errors.array()));
+        return next(errorHandler(400, 'Validation fails when trying to fetch note', errors.array()));
     }
     const { id } = matchedData(req, { locations: ['params'] });
 
     try {
         const note = await Note.findById(id);
         if (!note) return next(errorHandler(404, 'Note not found'));
-
+        
+        if (note.userID.toString() !== req.user.id) {
+            return next(errorHandler(403, 'Unauthorized Access when trying to fetch Note'));
+        }
         res.status(200).json(note);
     } catch (error) {
         next(error);
@@ -70,23 +64,22 @@ export const getNote = async (req, res, next) => {
 export const deleteNote = async (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-        return next(errorHandler(400, 'Validation failed', errors.array()));
+        return next(errorHandler(400,'Validation fails when trying to delete note', errors.array()));
     }
     const { id } = matchedData(req, { locations: ['params'] });
 
     const session = await mongoose.startSession();
-
 
     try {
         session.startTransaction();
 
         const note = await Note.findById(id).session(session);
         if (!note) {
-            throw new Error('Note not found');
+            throw errorHandler(404, 'Note not found');
         }
 
         if (note.userID.toString() !== req.user.id) {
-            throw new Error('You can delete only your note!');
+            throw errorHandler(403, 'Unauthorized Access when trying to delete Note');
         }
 
         await Note.deleteOne({ _id: id }).session(session);
@@ -98,7 +91,7 @@ export const deleteNote = async (req, res, next) => {
         );
 
         if (!updateResult.acknowledged || updateResult.modifiedCount !== 1) {
-            throw new Error('User update failed');
+            throw errorHandler(500, 'An error occurred while updating the user\'s notes section.');
         }
 
         await session.commitTransaction();
@@ -114,7 +107,7 @@ export const deleteNote = async (req, res, next) => {
 export const updateNote = async (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-        return next(errorHandler(400, 'Validation failed', errors.array()));
+        return next(errorHandler(400, 'Validation fails when trying to update note', errors.array()));
     }
     const { id } = matchedData(req, { locations: ['params'] });
     const { title, content, styleModel } = matchedData(req);
@@ -124,7 +117,7 @@ export const updateNote = async (req, res, next) => {
         if (!note) return next(errorHandler(404, 'Note not found'));
 
         if (note.userID.toString() !== req.user.id) {
-            return next(errorHandler(403, 'You can update only your note!'));
+            return next(errorHandler(403, 'Unauthorized Access when trying to update Note'));
         }
 
         if (title && title !== note.title) {
@@ -132,10 +125,10 @@ export const updateNote = async (req, res, next) => {
             try {
                 session.startTransaction();
 
-                const updatedNote = await note.updateOne({ title, content, styleModel }, { session, new: true });
+                const updatedNote = await note.updateOne({ title, content, styleModel }, { session });
 
-                if (!updatedNote) {
-                    throw new Error('User update failed');
+                if (!updatedNote || !updatedNote.acknowledged || updatedNote.modifiedCount !== 1 || updatedNote.matchedCount !== 1) {
+                    throw errorHandler(500, 'Note update failed');
                 }
 
                 const updateResult = await User.updateOne(
@@ -144,8 +137,8 @@ export const updateNote = async (req, res, next) => {
                     { session }
                 );
 
-                if (!updateResult.acknowledged || updateResult.modifiedCount !== 1) {
-                    throw new Error('User update failed');
+                if (!updateResult || !updateResult.acknowledged || updateResult.modifiedCount !== 1 || updateResult.matchedCount !== 1) {
+                    throw errorHandler(500, 'An error occurred while updating the user\'s notes section.');
                 }
 
                 await session.commitTransaction();
@@ -155,10 +148,14 @@ export const updateNote = async (req, res, next) => {
             } catch (error) {
                 await session.abortTransaction();
                 session.endSession();
-                return next(errorHandler(500, 'Note update failed'));
+                return next(error);
             }
         } else {
-            await note.updateOne({ title, content, styleModel });
+            const updatedNote = await note.updateOne({ title, content, styleModel });
+
+            if (!updatedNote || !updatedNote.acknowledged || updatedNote.modifiedCount !== 1 || updatedNote.matchedCount !== 1) {
+                throw errorHandler(500, 'Note update failed');
+            }
             return res.status(200).json("Note has been updated...");
         }
 
