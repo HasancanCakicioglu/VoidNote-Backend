@@ -1,17 +1,10 @@
 import mongoose from 'mongoose';
 
-// Define treeNoteChildrenSchema first
-const treeNoteChildrenSchema = new mongoose.Schema({
-  _id: { type: mongoose.Schema.Types.ObjectId },
-  title: { type: String },
-  children: [this]
-}, { _id: false });
-
 const userSchema = new mongoose.Schema({
-  username: { type: String, required: true},
+  username: { type: String, required: true },
   password: { type: String, required: true },
   email: { type: String, required: true, unique: true },
-  profilePhotoUrl: { type: String ,default : 'https://cdn-icons-png.freepik.com/256/552/552848.png?semt=ais_hybrid'},
+  profilePhotoUrl: { type: String, default: 'https://cdn-icons-png.freepik.com/256/552/552848.png?semt=ais_hybrid' },
   preferences: {
     theme: { type: String, default: 'light' },
     language: { type: String, default: 'en' }
@@ -19,13 +12,18 @@ const userSchema = new mongoose.Schema({
   notes: [
     { _id: { type: mongoose.Schema.Types.ObjectId }, title: { type: String } }
   ],
-  treeNotes: [
-    treeNoteChildrenSchema
+  trees: [
+    {
+      _id: { type: mongoose.Schema.Types.ObjectId},
+      parent_id: { type: mongoose.Schema.Types.ObjectId, required: false, },
+      title: { type: String , required: true },
+      order: { type: Number, required: true },
+    }
   ],
   todos: [
     { _id: mongoose.Schema.Types.ObjectId, title: String }
   ],
-  calendar: [
+  calendars: [
     { _id: mongoose.Schema.Types.ObjectId, title: String }
   ]
 }, { timestamps: true });

@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 
-export const updateTodoValidationSchema = {
+export const createSubTodoValidationSchema = {
     id: {
         in: ['params'],
         custom: {
