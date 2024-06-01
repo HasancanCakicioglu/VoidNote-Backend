@@ -123,7 +123,7 @@ export const updateTreeNote = async (req, res, next) => {
         return next(errorHandler(400, 'Validation fails when trying to update Tree', errors.array()));
     }
     const { id } = matchedData(req, { locations: ['params'] });
-    const { title, content, styleModel, children, parentID } = matchedData(req);
+    const { title, content, styleModel,parentID } = matchedData(req);
 
     if (!title && !parentID) {
         try {
@@ -138,7 +138,7 @@ export const updateTreeNote = async (req, res, next) => {
 
             const result = await Tree.updateOne(
                 { _id: id },
-                { children: children, content: content, styleModel: styleModel }
+                { content: content, styleModel: styleModel }
             );
             
             if (!result.acknowledged || result.modifiedCount !== 1 || result.matchedCount !== 1) {
@@ -165,7 +165,7 @@ export const updateTreeNote = async (req, res, next) => {
 
             const updateResult = await Tree.updateOne(
                 { _id: id },
-                { title: title, parent: parentID, children: children, content: content, styleModel: styleModel },
+                { title: title, parent: parentID, content: content, styleModel: styleModel },
                 { session }
             );
 

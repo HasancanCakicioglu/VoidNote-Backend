@@ -7,9 +7,6 @@ const treeNoteSchema = new mongoose.Schema({
     content: { type: String,default: ''},
     styleModel: styleSchema,
     parent: { type: mongoose.Schema.Types.ObjectId, ref: 'Tree' },
-    children: [
-        { type: mongoose.Schema.Types.ObjectId, ref: 'Tree' }
-    ]
 }, { timestamps: true });
 
 

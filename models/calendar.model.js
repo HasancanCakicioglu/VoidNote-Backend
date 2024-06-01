@@ -3,7 +3,7 @@ import styleSchema from './style.model.js';
 
 // Alt Notlar (Notes) Şeması
 const subCalendarSchema = new mongoose.Schema({
-    title: { type: String, required: true },
+    title: { type: String, default: ''},
     content: { type: String, default: '' },
     style: styleSchema,
     date: { type: Date, required: true },
