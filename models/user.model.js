@@ -17,7 +17,6 @@ const userSchema = new mongoose.Schema({
       _id: { type: mongoose.Schema.Types.ObjectId},
       parent_id: { type: mongoose.Schema.Types.ObjectId, required: false, },
       title: { type: String , required: true },
-      order: { type: Number, required: true },
     }
   ],
   todos: [

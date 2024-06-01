@@ -12,7 +12,7 @@ const subCalendarSchema = new mongoose.Schema({
 // Calendar Şeması
 const calendarSchema = new mongoose.Schema({
     userID: { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'User' },
-    title: { type: String },
+    title: { type: String ,default: ''},
     calenders: [{ date: { type: [Date] }, title: { type: String } }],
     notes: [subCalendarSchema]
 }, { timestamps: true });

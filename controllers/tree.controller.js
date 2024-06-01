@@ -3,45 +3,42 @@ import User from "../models/user.model.js";
 import Tree from "../models/treeNote.model.js";
 import { validationResult, matchedData } from "express-validator";
 import { errorHandler } from '../utils/error.js';
-import e from "express";
 
 
 
 export const createTreeNote = async (req, res,next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-        return next(errorHandler(400, 'Validation failed', errors.array()));
+        return next(errorHandler(400, 'Validation fails when trying to create tree', errors.array()));
     }
-    const { title, parentID, order } = matchedData(req);
-
+    const {parentID} = matchedData(req);
 
     const session = await mongoose.startSession();
     try {
         session.startTransaction();
         const createdTreeNote = await Tree.create([{
             userID: req.user.id,
-            title: title,
             parent: parentID,
         }], { session });
 
         if (!createdTreeNote || createdTreeNote.length === 0) {
-            throw new Error('TreeNote creation failed');
+            throw errorHandler(500, 'TreeNote creation failed');
         }
 
         const treeNote = createdTreeNote[0];
         const updateResult = await User.updateOne(
             { _id: req.user.id },
-            { $push: { trees: { _id: treeNote._id, parent_id: treeNote.parent, title: treeNote.title, order: order } } },
+            { $push: { trees: { _id: treeNote._id, parent_id: treeNote.parent ,title:treeNote.title } } },
             { session }
         );
 
         if (!updateResult.acknowledged || updateResult.modifiedCount !== 1 || updateResult.matchedCount !== 1) {
-            throw new Error('TreeNote creation failed');
+            throw errorHandler(500, 'An error occurred while updating the user\'s trees section.');
         }
 
         await session.commitTransaction();
         session.endSession();
-        res.status(201).json({ message: 'TreeNote created successfully' });
+        res.status(201).json({ message: 'TreeNote created successfully', data: treeNote});
     } catch (error) {
         await session.abortTransaction();
         session.endSession();
@@ -53,21 +50,21 @@ export const getTreeNote = async (req, res, next) => {
 
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-        return next(errorHandler(400, 'Validation failed', errors.array()));
+        return next(errorHandler(400, 'Validation fails when trying to fetch tree', errors.array()));
     }
     const { id } = matchedData(req, { locations: ['params'] });
-
-    if (id !== req.user.id) {
-        return next(errorHandler(403, 'Unauthorized'));
-    }
 
     try {
         const treeNote = await Tree.findOne({ _id: id });
         if (!treeNote) {
-            throw new Error('TreeNote not found');
+            throw errorHandler(404, 'TreeNote not found when trying to fetch TreeNote');
         }
 
-        res.status(200).json({ treeNote });
+        if (treeNote.userID.toString() !== req.user.id) {
+            throw errorHandler(403, 'Unauthorized Access when trying to fetch TreeNote');
+        }
+
+        res.status(200).json({ message: 'TreeNote fetched successfully', data: treeNote });
     } catch (error) {
         next(error);
     }
@@ -76,20 +73,27 @@ export const getTreeNote = async (req, res, next) => {
 export const deleteTreeNote = async (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-        return next(errorHandler(400, 'Validation failed', errors.array()));
+        return next(errorHandler(400, 'Validation fails when trying to delete Tree', errors.array()));
     }
     const { id } = matchedData(req, { locations: ['params'] });
-
-    if (id !== req.user.id) {
-        return next(errorHandler(403, 'Unauthorized'));
-    }
 
     const session = await mongoose.startSession();
     try {
         session.startTransaction();
+        
+        const treeNote = await Tree.findById(id).session(session);
+        if (!treeNote) {
+            throw errorHandler(404, 'TreeNote not found');
+        }
+
+        if (treeNote.userID.toString() !== req.user.id) {
+            throw errorHandler(403, 'Unauthorized Access when trying to delete TreeNote');
+        }
+
         const deleteResult = await Tree.deleteOne({ _id: id }, { session });
+
         if (!deleteResult.acknowledged || deleteResult.deletedCount !== 1) {
-            throw new Error('TreeNote deletion failed');
+            throw errorHandler(500, 'TreeNote deletion failed');
         }
 
         const updateResult = await User.updateOne(
@@ -99,7 +103,7 @@ export const deleteTreeNote = async (req, res, next) => {
         );
 
         if (!updateResult.acknowledged || updateResult.modifiedCount !== 1 || updateResult.matchedCount !== 1) {
-            throw new Error('TreeNote deletion failed');
+            throw errorHandler(500, 'An error occurred while updating the user\'s trees section.');
         }
 
         await session.commitTransaction();
@@ -116,13 +120,22 @@ export const deleteTreeNote = async (req, res, next) => {
 export const updateTreeNote = async (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-        return next(errorHandler(400, 'Validation failed', errors.array()));
+        return next(errorHandler(400, 'Validation fails when trying to update Tree', errors.array()));
     }
     const { id } = matchedData(req, { locations: ['params'] });
-    const { title, content, styleModel, children, parentID, order } = matchedData(req);
+    const { title, content, styleModel, children, parentID } = matchedData(req);
 
-    if (!title && !parentID && !order) {
+    if (!title && !parentID) {
         try {
+            const treeNote = await Tree.findOne({ _id});
+            if (!treeNote) {
+                return next(errorHandler(404, 'TreeNote not found'));
+            }
+
+            if (treeNote.userID.toString() !== req.user.id) {
+                return next(errorHandler(403, 'Unauthorized Access when trying to update TreeNote'));
+            }
+
             const result = await Tree.updateOne(
                 { _id: id },
                 { children: children, content: content, styleModel: styleModel }
@@ -141,6 +154,15 @@ export const updateTreeNote = async (req, res, next) => {
         try {
             session.startTransaction();
 
+            const treeNote = await Tree.findOne({ _id: id }).session(session);
+            if (!treeNote) {
+                throw errorHandler(404, 'TreeNote not found');
+            }
+
+            if (treeNote.userID.toString() !== req.user.id) {
+                throw errorHandler(403, 'Unauthorized Access when trying to update TreeNote');
+            }
+
             const updateResult = await Tree.updateOne(
                 { _id: id },
                 { title: title, parent: parentID, children: children, content: content, styleModel: styleModel },
@@ -148,17 +170,17 @@ export const updateTreeNote = async (req, res, next) => {
             );
 
             if (!updateResult.acknowledged || updateResult.modifiedCount !== 1 || updateResult.matchedCount !== 1) {
-                throw new Error('TreeNote update failed');
+                throw errorHandler(500, 'TreeNote update failed');
             }
 
             const updateResultUser = await User.updateOne(
                 { _id: req.user.id, 'trees._id': id },
-                { $set: { 'trees.$.title': title, 'trees.$.parent_id': parentID, 'trees.$.order': order } },
+                { $set: { 'trees.$.title': title, 'trees.$.parent_id': parentID } },
                 { session }
             );
 
             if (!updateResultUser.acknowledged || updateResultUser.modifiedCount !== 1 || updateResultUser.matchedCount !== 1) {
-                throw new Error('TreeNote update failed');
+                throw errorHandler(500, 'An error occurred while updating the user\'s trees section.');
             }
 
             await session.commitTransaction();

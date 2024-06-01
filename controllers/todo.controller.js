@@ -1,28 +1,20 @@
 import mongoose from "mongoose";
-import {Todo,SubTodo} from "../models/todo.model.js";
+import { Todo, SubTodo } from "../models/todo.model.js";
 import { validationResult, matchedData } from 'express-validator';
 import User from '../models/user.model.js';
+import { errorHandler } from "../utils/error.js";
 
 
 export const createTodo = async (req, res, next) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-        return next(errorHandler(400, 'Validation failed', errors.array()));
-    }
-    const { title } = matchedData(req);
-
     const session = await mongoose.startSession();
-
     try {
-
         session.startTransaction();
         const createdTodo = await Todo.create([{
             userID: req.user.id,
-            title,
         }], { session });
 
         if (!createdTodo || createdTodo.length === 0) {
-            throw new Error('todo creation failed');
+            throw errorHandler(500, 'Todo creation failed');
         }
 
         const todo = createdTodo[0];
@@ -30,16 +22,16 @@ export const createTodo = async (req, res, next) => {
         const updateResult = await User.updateOne(
             { _id: req.user.id },
             { $push: { todos: { _id: todo._id, title: todo.title } } },
-            
+
         ).session(session);
 
         if (!updateResult.acknowledged || updateResult.modifiedCount !== 1 || updateResult.matchedCount !== 1) {
-            throw new Error('todo creation failed');
+            throw errorHandler(500, 'An error occurred while updating the user\'s todos section.');
         }
 
         await session.commitTransaction();
         session.endSession();
-        res.status(201).json({ message: 'todo created successfully' });
+        res.status(201).json({ message: 'todo created successfully', data: todo });
     } catch (error) {
         await session.abortTransaction();
         session.endSession();
@@ -51,21 +43,20 @@ export const getTodo = async (req, res, next) => {
 
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-        return next(errorHandler(400, 'Validation failed', errors.array()));
+        return next(errorHandler(400, 'Validation fails when trying to fetch todo ', errors.array()));
     }
     const { id } = matchedData(req, { locations: ['params'] });
 
     try {
-        const todo = await Todo.findOne({ _id: id});
+        const todo = await Todo.findOne({ _id: id });
         if (!todo) {
-            throw new Error('Todo not found');
+            throw errorHandler(404, 'Todo not found');
         }
 
         if (todo.userID.toString() !== req.user.id) {
-            throw new Error('Unauthorized');
+            throw errorHandler(403, 'Unauthorized Access when trying to fetch Todo');
         }
-
-        res.status(200).json({ todo });
+        res.status(200).json({ message: 'Todo fetched successfully', data: todo });
     } catch (error) {
         next(error);
     }
@@ -75,7 +66,7 @@ export const getTodo = async (req, res, next) => {
 export const deleteTodo = async (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-        return next(errorHandler(400, 'Validation failed', errors.array()));
+        return next(errorHandler(400, 'Validation fails when trying to delete todo', errors.array()));
     }
     const { id } = matchedData(req, { locations: ['params'] });
 
@@ -85,16 +76,16 @@ export const deleteTodo = async (req, res, next) => {
         session.startTransaction();
         const todo = await Todo.findOne({ _id: id }).session(session);
         if (!todo) {
-            throw new Error('Todo not found');
+            throw errorHandler(404, 'Todo not found when trying to delete Todo')
         }
 
         if (todo.userID.toString() !== req.user.id) {
-            throw new Error('Unauthorized');
+            throw errorHandler(403, 'Unauthorized Access when trying to delete Todo');
         }
 
         const deleteResult = await Todo.deleteOne({ _id: id }).session(session)
         if (!deleteResult.acknowledged || deleteResult.deletedCount !== 1) {
-            throw new Error('Todo deletion failed');
+            throw errorHandler(500, 'An error occurred while deleting the todo');
         }
 
         const updateResult = await User.updateOne(
@@ -104,7 +95,7 @@ export const deleteTodo = async (req, res, next) => {
         );
 
         if (!updateResult.acknowledged || updateResult.modifiedCount !== 1 || updateResult.matchedCount !== 1) {
-            throw new Error('Todo deletion failed');
+            throw errorHandler(500, 'An error occurred while updating the user\'s todos section.');
         }
 
         await session.commitTransaction();
@@ -120,10 +111,10 @@ export const deleteTodo = async (req, res, next) => {
 export const updateTodo = async (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-        return next(errorHandler(400, 'Validation failed', errors.array()));
+        return next(errorHandler(400, 'Validation fails when trying to update todo', errors.array()));
     }
     const { id } = matchedData(req, { locations: ['params'] });
-    const { title} = matchedData(req);
+    const { title } = matchedData(req);
 
     const session = await mongoose.startSession();
 
@@ -131,11 +122,15 @@ export const updateTodo = async (req, res, next) => {
         session.startTransaction();
         const todo = await Todo.findOne({ _id: id });
         if (!todo) {
-            throw new Error('Todo not found');
+            throw errorHandler(404, 'Todo not found');
         }
 
         if (todo.userID.toString() !== req.user.id) {
-            throw new Error('Unauthorized');
+            throw errorHandler(403, 'Unauthorized Access when trying to update Todo');
+        }
+
+        if (title === todo.title) {
+            throw errorHandler(400, 'No changes detected');
         }
 
         const updateResult = await todo.updateOne(
@@ -143,7 +138,7 @@ export const updateTodo = async (req, res, next) => {
         ).session(session);
 
         if (!updateResult.acknowledged || updateResult.modifiedCount !== 1 || updateResult.matchedCount !== 1) {
-            throw new Error('Todo update failed');
+            throw errorHandler(500, 'An error occurred while updating the todo');
         }
 
         const userResult = await User.updateOne(
@@ -152,7 +147,7 @@ export const updateTodo = async (req, res, next) => {
         ).session(session);
 
         if (!userResult.acknowledged || userResult.modifiedCount !== 1 || userResult.matchedCount !== 1) {
-            throw new Error('Todo update failed');
+            throw errorHandler(500, 'An error occurred while updating the user\'s todos section.');
         }
 
         await session.commitTransaction();
@@ -170,32 +165,31 @@ export const updateTodo = async (req, res, next) => {
 export const createSubTodo = async (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-        return next(errorHandler(400, 'Validation failed', errors.array()));
+        return next(errorHandler(400, 'Validation fails when trying to create subtodo ', errors.array()));
     }
     const { id } = matchedData(req, { locations: ['params'] });
 
     try {
         const todo = await Todo.findOne({ _id: id });
         if (!todo) {
-            throw new Error('Todo not found');
+            throw errorHandler(404, 'Todo not found when trying to create SubTodo');
         }
 
         if (todo.userID.toString() !== req.user.id) {
-            throw new Error('Unauthorized');
+            throw errorHandler(403, 'Unauthorized Access when trying to create SubTodo');
         }
 
-        const subTodo = {
-        };
+        const subTodo = new SubTodo();
 
         todo.todos.push(subTodo);
 
         const updateResult = await todo.save();
 
         if (!updateResult) {
-            throw new Error('SubTodo creation failed');
+            throw errorHandler(500, 'SubTodo creation failed');
         }
 
-        res.status(201).json({ message: 'SubTodo created successfully' });
+        res.status(201).json({ message: 'SubTodo created successfully', data: subTodo});
     } catch (error) {
         next(error);
     }
@@ -205,39 +199,39 @@ export const createSubTodo = async (req, res, next) => {
 export const updateSubTodo = async (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-        return next(errorHandler(400, 'Validation failed', errors.array()));
+        return next(errorHandler(400, 'Validation fails when trying to update subtodo', errors.array()));
     }
     const { todoId, subTodoId } = matchedData(req, { locations: ['params'] });
-    const { content, completed, priority ,styleModel} = matchedData(req);
+    const { content, completed, priority, styleModel } = matchedData(req);
 
     try {
         const todo = await Todo.findOne({ _id: todoId });
 
         if (!todo) {
-            throw new Error('Todo not found');
+            throw errorHandler(404, 'Todo not found when trying to update SubTodo');
         }
 
         if (todo.userID.toString() !== req.user.id) {
-            throw new Error('Unauthorized');
+            throw errorHandler(403, 'Unauthorized Access when trying to update SubTodo');
         }
 
         const subTodo = todo.todos.id(subTodoId);
 
         if (!subTodo) {
-            throw new Error('SubTodo not found');
+            throw errorHandler(404, 'SubTodo not found');
         }
 
-        subTodo.content = content;
-        subTodo.completed = completed;
-        subTodo.priority = priority;
-        subTodo.styleModel = styleModel;
+        if (content !== undefined) subTodo.content = content;
+        if (completed !== undefined) subTodo.completed = completed;
+        if (priority !== undefined) subTodo.priority = priority;
+        if (styleModel !== undefined) subTodo.styleModel = styleModel;
 
         todo.todos.id(subTodoId).set(subTodo);
 
         const updateResult = await todo.save();
 
         if (!updateResult) {
-            throw new Error('SubTodo update failed');
+            throw errorHandler(500, 'SubTodo update failed  when trying to update SubTodo');
         }
 
         res.status(200).json({ message: 'SubTodo updated successfully' });
@@ -250,7 +244,7 @@ export const updateSubTodo = async (req, res, next) => {
 export const deleteSubTodo = async (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-        return next(errorHandler(400, 'Validation failed', errors.array()));
+        return next(errorHandler(400, 'Validation fails when trying to delete subtodo ', errors.array()));
     }
     const { todoId, subTodoId } = matchedData(req, { locations: ['params'] });
 
@@ -258,17 +252,17 @@ export const deleteSubTodo = async (req, res, next) => {
         const todo = await Todo.findOne({ _id: todoId });
 
         if (!todo) {
-            throw new Error('Todo not found');
+            throw errorHandler(404, 'Todo not found when trying to delete SubTodo');
         }
 
         if (todo.userID.toString() !== req.user.id) {
-            throw new Error('Unauthorized');
+            throw errorHandler(403, 'Unauthorized Access when trying to delete SubTodo');
         }
 
         const subTodo = todo.todos.id(subTodoId);
 
         if (!subTodo) {
-            throw new Error('SubTodo not found');
+            throw errorHandler(404, 'SubTodo not found when trying to delete SubTodo');
         }
 
         const updateResult = await Todo.updateOne(
@@ -277,7 +271,7 @@ export const deleteSubTodo = async (req, res, next) => {
         );
 
         if (!updateResult) {
-            throw new Error('SubTodo deletion failed');
+            throw errorHandler(500, 'SubTodo deletion failed');
         }
 
         res.status(200).json({ message: 'SubTodo deleted successfully' });

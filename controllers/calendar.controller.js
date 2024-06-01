@@ -6,23 +6,16 @@ import { Calendar ,SubCalendar} from '../models/calendar.model.js';
 
 
 export const createCalendar = async (req, res, next) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-        return next(errorHandler(400, 'Validation failed', errors.array()));
-    }
-    const { title } = matchedData(req);
-
     const session = await mongoose.startSession();
 
     try {
         session.startTransaction();
         const createdcalendar = await Calendar.create([{
             userID: req.user.id,
-            title,
         }], { session });
 
         if (!createdcalendar || createdcalendar.length === 0) {
-            throw new Error('calendar creation failed');
+            throw errorHandler(500, 'Calendar creation failed');
         }
 
         const calendar = createdcalendar[0];
@@ -33,12 +26,12 @@ export const createCalendar = async (req, res, next) => {
         );
 
         if (!updateResult.acknowledged || updateResult.modifiedCount !== 1 || updateResult.matchedCount !== 1) {
-            throw new Error('calendar creation failed');
+            throw errorHandler(500, 'An error occurred while updating the user\'s calendars section.');
         }
 
         await session.commitTransaction();
         session.endSession();
-        res.status(201).json({ message: 'calendar created successfully' });
+        res.status(201).json({ message: 'calendar created successfully' ,data:calendar});
     } catch (error) {
         await session.abortTransaction();
         session.endSession();

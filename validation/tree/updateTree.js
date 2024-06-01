@@ -49,10 +49,4 @@ export const updateTreeValidationSchema = {
         required:false,
         optional: { nullable: true }
     },
-    order: {
-        in: ['body'],
-        isInt: true,
-        required:false,
-        optional: { nullable: true }
-    },
 };

@@ -12,7 +12,7 @@ const subTodoSchema = new mongoose.Schema({
 // Todo Şeması
 const todoSchema = new mongoose.Schema({
     userID: { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'User' },
-    title: { type: String, required: true },
+    title: { type: String, default: ''},
     done: { type: Boolean, default: false },
     todos: [subTodoSchema]
 }, { timestamps: true });
