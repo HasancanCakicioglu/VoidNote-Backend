@@ -185,19 +185,19 @@ export const createSubCalendar = async (req, res, next) => {
             throw errorHandler(404, 'Calendar not found');
         }
 
-        const createdSubCalendar = await SubCalendar.create({ 
-            title,
-            date,
+        const createdSubCalendar = await SubCalendar({ 
+            title:title,
+            date:date,
         });
 
         if (!createdSubCalendar) {
-            throw new Error('SubCalendar creation failed');
+            throw errorHandler(500, 'SubCalendar creation failed');
         }
 
         // Tek nesneyi ekliyoruz
         calendar.notes.push(createdSubCalendar);
 
-        const updateResult = await calendar.save();
+        await calendar.save();
 
         res.status(201).json({ message: 'SubCalendar created successfully', data: createdSubCalendar });
     } catch (error) {
@@ -217,7 +217,7 @@ export const deleteSubCalendar = async (req, res, next) => {
         const calendar = await Calendar.findOne({ _id: id });
 
         if (!calendar) {
-            throw new Error('Calendar not found');
+            throw errorHandler(404, 'Calendar not found when trying to delete SubCalendar');
         }
 
         // Alt takvimi sil
@@ -226,7 +226,7 @@ export const deleteSubCalendar = async (req, res, next) => {
         const updateResult = await calendar.save();
 
         if (!updateResult) {
-            throw new Error('SubCalendar deletion failed');
+            throw errorHandler(500, 'SubCalendar deletion failed');
         }
 
         res.status(200).json({ message: 'SubCalendar deleted successfully' });
@@ -249,13 +249,13 @@ export const updateSubCalendar = async (req, res, next) => {
         const calendar = await Calendar.findOne({ _id: id });
 
         if (!calendar) {
-            throw new Error('Calendar not found');
+            throw errorHandler(404, 'Calendar not found when trying to update SubCalendar');
         }
 
         const subCalendar = calendar.notes.id(subId);
 
         if (!subCalendar) {
-            throw new Error('SubCalendar not found');
+            throw errorHandler(404, 'SubCalendar not found when trying to update SubCalendar');
         }
 
         // Sadece gönderilen alanları güncelle
@@ -267,7 +267,7 @@ export const updateSubCalendar = async (req, res, next) => {
         const updateResult = await calendar.save();
 
         if (!updateResult) {
-            throw new Error('SubCalendar update failed');
+            throw errorHandler(500, 'SubCalendar update failed');
         }
 
         res.status(200).json({ message: 'SubCalendar updated successfully' });
