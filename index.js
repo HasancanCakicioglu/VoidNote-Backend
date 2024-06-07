@@ -40,7 +40,7 @@ app.get('/test', (req, res) => {
 });
 
 
-// Routes
+// Routes middleware
 app.use('/api/user', userRoutes);
 app.use('/api/auth', authRoutes);
 
