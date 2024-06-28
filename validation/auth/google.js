@@ -12,7 +12,7 @@ export const googleValidationSchema = {
         in: ['body'],
         isEmail: true,
     },
-    profilePicture: {
+    photo: {
         in: ['body'],
         isString: true,
     },

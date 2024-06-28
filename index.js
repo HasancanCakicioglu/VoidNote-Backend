@@ -9,10 +9,14 @@ import cookieParser from 'cookie-parser';
 import connectMongoDB from './config/mongoose.js';
 import helmet from "helmet";
 import cors from "cors";
+import { createTransporter } from './config/nodemailer.js';
 
 
 // Connect to MongoDB
 connectMongoDB();
+
+// Create a nodemailer transporter
+createTransporter();
 
 // Create an Express app
 const app = express();
