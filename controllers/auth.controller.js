@@ -4,6 +4,8 @@ import { errorHandler } from '../utils/error.js';
 import jwt from 'jsonwebtoken';
 import { validationResult, matchedData } from 'express-validator';
 import { transporter } from "../config/nodemailer.js"
+import oAuth2Client from '../config/oauth.js';
+import { sendMailConstants } from '../constant/sendMail.js';
 
 
 
@@ -33,14 +35,14 @@ export const signup = async (req, res, next) => {
     await transporter.sendMail({
       from: process.env.EMAIL_USER,
       to: email,
-      subject: 'Email Verification Code',
-      html: `<h3>Please use the following code to verify your email:</h3><p><b>${verificationCode}</b></p>`
+      subject: sendMailConstants.subject,
+      html: sendMailConstants.emailTemplate(verificationCode)
     });
 
     const newUser = new User({ username, email, password: hashedPassword, verificationCode: verificationCode, verificationCodeExpires: verificationCodeExpires });
     await newUser.save();
 
-    res.status(201).json({ message: 'User created successfully' });
+    res.status(201).json({ message: 'Verification email sent successfully' });
   } catch (error) {
     next(error);
   }
@@ -78,6 +80,122 @@ export const verifyEmail = async (req, res, next) => {
   }
 };
 
+export const resendVerificationEmail = async (req, res, next) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return next(errorHandler(400, 'Validation failed', errors.array()));
+  }
+  const { email } = matchedData(req);
+
+  try {
+    const user = await User
+      .findOne({ email });
+
+    if (!user) {
+      return next(errorHandler(404, 'User not found'));
+    }
+
+    if (user.verified) {
+      return next(errorHandler(400, 'Email already verified'));
+    }
+
+    if (user.verificationCode && new Date() < user.verificationCodeExpires) {
+      return next(errorHandler(400, 'Verification code already sent'));
+    }
+
+    const verificationCode = Math.random().toString(36).slice(-6);
+    const verificationCodeExpires = new Date(Date.now() + 300000); // 5 minutes
+
+    await transporter.sendMail({
+      from: process.env.EMAIL_USER,
+      to: email,
+      subject: sendMailConstants.subject,
+      html: sendMailConstants.emailTemplate(verificationCode)
+    });
+
+    user.verificationCode = verificationCode;
+    user.verificationCodeExpires = verificationCodeExpires;
+    await user.save();
+
+    res.status(200).json({ message: 'Verification email sent successfully' });
+
+  } catch (error) {
+
+    next(error);
+  }
+
+}
+
+export const forgetPassword = async (req, res, next) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return next(errorHandler(400, 'Validation failed', errors.array()));
+  }
+
+  const { email } = matchedData(req);
+
+  try {
+    const user = await User
+      .findOne
+      ({
+        email
+      });
+
+    if (!user || user.authMethod === 'google') {
+      return next(errorHandler(404, 'User not found'));
+    }
+
+    const resetPasswordToken = Math.random().toString(36).slice(-6);
+
+    await transporter.sendMail({
+      from: process.env.EMAIL_USER,
+      to: email,
+      subject: sendMailConstants.resetPasswordSubject,
+      html: sendMailConstants.resetPasswordTemplate(resetPasswordToken)
+    });
+
+    user.passwordResetCode = resetPasswordToken;
+    user.passwordResetCodeExpires = new Date(Date.now() + 300000); // 5 minutes
+    await user.save();
+
+    res.status(200).json({ message: 'Reset password email sent successfully' });
+
+  } catch (error) {
+    next(error);
+  }
+
+}
+
+export const verifyForgetPassword = async (req, res, next) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return next(errorHandler(400, 'Validation failed', errors.array()));
+  }
+  const { email, password , verificationCode } = matchedData(req);
+  try {
+    const user = await User.findOne({ email });
+
+    if (!user || user.authMethod === 'google') {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    if (user.passwordResetCode !== verificationCode || new Date() > user.passwordResetCodeExpires) {
+      return res.status(400).json({ message: 'Invalid or expired verification code' });
+    }
+
+    user.password = bcryptjs.hashSync(password, 10);
+    user.passwordResetCode = undefined;
+    user.passwordResetCodeExpires = undefined;
+    await user.save();
+
+    res.status(200).json({ message: 'Password change successfully' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+
+
 export const signin = async (req, res, next) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -114,11 +232,18 @@ export const google = async (req, res, next) => {
   if (!errors.isEmpty()) {
     return next(errorHandler(400, 'Validation failed', errors.array()));
   }
+  const authorizationHeader = req.headers.authorization;
 
-  const { username, email, photo } = matchedData(req);
+  const accessToken = authorizationHeader.split(' ')[1];
+  console.log(accessToken);
+  const tokenInfo = await oAuth2Client.verifyIdToken({
+    idToken: accessToken,
+    audience: process.env.GOOGLE_CLIENT_ID, // Google Client ID'nizi buraya ekleyin
+  });
+
 
   try {
-    const user = await User.findOne({ email: email });
+    const user = await User.findOne({ email: tokenInfo.payload.email });
     if (user) {
       const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET);
       const { password: hashedPassword, ...rest } = user._doc;
@@ -136,11 +261,12 @@ export const google = async (req, res, next) => {
         Math.random().toString(36).slice(-8);
       const hashedPassword = bcryptjs.hashSync(generatedPassword, 10);
       const newUser = new User({
-        username: username,
-        email: email,
+        username: tokenInfo.payload.name,
+        email: tokenInfo.payload.email,
         password: hashedPassword,
-        profilePicture: photo,
+        profilePicture: tokenInfo.payload.picture,
         verified: true,
+        authMethod: 'google',
       });
       await newUser.save();
       const token = jwt.sign({ id: newUser._id }, process.env.JWT_SECRET);
