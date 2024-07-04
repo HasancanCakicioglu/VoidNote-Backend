@@ -56,13 +56,13 @@ app.use("/api/calendar", calenderRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
-  const statusCode = err.statusCode || 500;
+  const status = err.statusCode || 500;
   const message = err.message || 'Internal Server Error';
   const validation = err.validation || [];
-  return res.status(statusCode).json({
+  return res.status(status).json({
     success: false,
     message,
-    statusCode,
+    status,
     validation,
   });
 });

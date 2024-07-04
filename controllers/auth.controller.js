@@ -1,6 +1,7 @@
 import User from '../models/user.model.js';
 import bcryptjs from 'bcryptjs';
 import { errorHandler } from '../utils/error.js';
+import { sendSuccessResponse } from '../utils/success.js';
 import jwt from 'jsonwebtoken';
 import { validationResult, matchedData } from 'express-validator';
 import { transporter } from "../config/nodemailer.js"
@@ -20,6 +21,10 @@ export const signup = async (req, res, next) => {
     const existingUser = await User.findOne({ email });
     if (existingUser && existingUser.verified) {
       return next(errorHandler(400, 'User already exists'));
+    }
+
+    if (existingUser && !existingUser.verified && existingUser.verificationCodeExpires > Date.now()) {
+      return next(errorHandler(208, 'Verification email already sent'));
     }
 
     if (existingUser && !existingUser.verified) {
@@ -42,7 +47,7 @@ export const signup = async (req, res, next) => {
     const newUser = new User({ username, email, password: hashedPassword, verificationCode: verificationCode, verificationCodeExpires: verificationCodeExpires });
     await newUser.save();
 
-    res.status(201).json({ message: 'Verification email sent successfully' });
+    return res.status(201).json(sendSuccessResponse(201, "Verification email successfuly sent", []));
   } catch (error) {
     next(error);
   }
@@ -58,15 +63,15 @@ export const verifyEmail = async (req, res, next) => {
     const user = await User.findOne({ email });
 
     if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+      return next(errorHandler(404, 'User not found'));
     }
 
     if (user.verified) {
-      return res.status(400).json({ message: 'Email already verified' });
+      return next(errorHandler(400, 'Email already verified'));
     }
 
     if (user.verificationCode !== verificationCode || new Date() > user.verificationCodeExpires) {
-      return res.status(400).json({ message: 'Invalid or expired verification code' });
+      return next(errorHandler(400, 'Invalid or expired verification code'));
     }
 
     user.verified = true;
@@ -74,7 +79,16 @@ export const verifyEmail = async (req, res, next) => {
     user.verificationCodeExpires = undefined;
     await user.save();
 
-    res.status(200).json({ message: 'Email verified successfully' });
+
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET);
+    const { password: hashedPassword, ...rest } = user._doc;
+    const expiryDate = new Date();
+    expiryDate.setMonth(expiryDate.getMonth() + 1);
+
+
+
+    return res.cookie('access_token', token, { httpOnly: true, expires: expiryDate })
+    .status(200).json(sendSuccessResponse(200, "Email verified successfully", rest));
   } catch (error) {
     next(error);
   }
@@ -171,7 +185,7 @@ export const verifyForgetPassword = async (req, res, next) => {
   if (!errors.isEmpty()) {
     return next(errorHandler(400, 'Validation failed', errors.array()));
   }
-  const { email, password , verificationCode } = matchedData(req);
+  const { email, password, verificationCode } = matchedData(req);
   try {
     const user = await User.findOne({ email });
 
@@ -221,7 +235,7 @@ export const signin = async (req, res, next) => {
     res
       .cookie('access_token', token, { httpOnly: true, expires: expiryDate })
       .status(200)
-      .json(rest);
+      .json(sendSuccessResponse(200, "Login successful", rest));
   } catch (error) {
     next(error);
   }

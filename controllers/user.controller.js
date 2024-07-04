@@ -4,6 +4,27 @@ import bcryptjs from 'bcryptjs';
 import { validationResult } from 'express-validator';
 
 
+export const getUser = async (req, res, next) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return next(errorHandler(400, 'Validation failed', errors.array()));
+  }
+  const { type } = matchedData(req);
+  const token = req.headers.authorization.split(' ')[1];
+
+  try {
+    const user_id = jwt.verify(token, process.env.JWT_SECRET).id;
+
+    const user = await User
+      .findOne({ _id: user_id })
+      .select(type);
+
+  } catch (error) {
+    next(error);
+  }
+}
+
+
 // update user
 
 export const updateUser = async (req, res, next) => {
