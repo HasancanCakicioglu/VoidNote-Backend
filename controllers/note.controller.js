@@ -3,6 +3,7 @@ import { validationResult, matchedData } from 'express-validator';
 import Note from '../models/note.model.js';
 import mongoose from 'mongoose';
 import User from '../models/user.model.js';
+import { sendSuccessResponse } from '../utils/success.js';
 
 
 
@@ -32,7 +33,7 @@ export const createNote = async (req, res, next) => {
 
         await session.commitTransaction();
         session.endSession();
-        res.status(201).json({ message: 'Note created successfully' ,data:note});
+        res.status(201).json(sendSuccessResponse(201,'Note has been created...', note));
     } catch (error) {
         await session.abortTransaction();
         session.endSession();
@@ -56,7 +57,7 @@ export const getNote = async (req, res, next) => {
         if (note.userID.toString() !== req.user.id) {
             return next(errorHandler(403, 'Unauthorized Access when trying to fetch Note'));
         }
-        res.status(200).json(note);
+        res.status(200).json(sendSuccessResponse(200,'Note has been fetched...', note));
     } catch (error) {
         next(error);
     }

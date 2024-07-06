@@ -1,25 +1,24 @@
-export const getUserValidationSchema = [
-    // Header doğrulama
-    header('Authorization')
-      .notEmpty()
-      .withMessage('Authorization header is required')
-      .custom((value) => {
-        // Bearer token'in formatını kontrol et
-        if (!value.startsWith('Bearer ')) {
-          throw new Error('Invalid Bearer token format');
-        }
-        // Token'i al, Bearer kısmını kaldır
-        const token = value.split(' ')[1];
-        // Token'in valid bir MongoDB ObjectId olup olmadığını kontrol et
-        if (!mongoose.isValidObjectId(token)) {
-          throw new Error('Invalid MongoDB ObjectId');
-        }
-        return true;
-      }),
-    
-    body('type')
-      .notEmpty()
-      .withMessage('Type is required')
-      .isString()
-      .withMessage('Type must be a string'),
-  ];
+
+
+export const getUserValidationSchema = {
+  // Body doğrulama
+  type: {
+    in: ['body'],
+    notEmpty: {
+      errorMessage: 'Type is required',
+    },
+    isString: {
+      errorMessage: 'Type must be a string',
+    },
+    custom: {
+        options: (value) => {
+          // Geçerli değerleri belirleyin
+          const validTypes = ['all', 'notes', 'trees','todos','calendars']; // Sadece bu değerler kabul edilecek
+          if (!validTypes.includes(value)) {
+            throw new Error(`Invalid type. Valid values are: ${validTypes.join(', ')}`);
+          }
+          return true;
+        },
+      },
+  },
+};
