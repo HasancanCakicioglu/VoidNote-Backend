@@ -22,10 +22,11 @@ export const updateNoteValidationSchema = {
         required: false,
         optional: { nullable: true }
     },
-    styleModel: {
+    brief: {
         in: ['body'],
-        isObject: true,
-        required:false,
+        maxLength: 50,
+        isString: true,
+        required: false,
         optional: { nullable: true }
     },
 };

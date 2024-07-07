@@ -16,7 +16,7 @@ const userSchema = new mongoose.Schema({
     language: { type: String, default: 'en' }
   },
   notes: [
-    { _id: { type: mongoose.Schema.Types.ObjectId }, title: { type: String } }
+    { _id: { type: mongoose.Schema.Types.ObjectId }, title: { type: String }, brief: { type: String ,maxlength: 50, default:""},updatedAt: { type: Date }}
   ],
   trees: [
     {

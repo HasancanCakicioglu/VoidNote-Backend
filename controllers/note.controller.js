@@ -23,7 +23,7 @@ export const createNote = async (req, res, next) => {
 
         const updateResult = await User.updateOne(
             { _id: req.user.id },
-            { $push: { notes: { _id: note._id, title: note.title } } },
+            { $push: { notes: { _id: note._id, title: note.title,updatedAt:note.updatedAt} } },
             { session }
         );
 
@@ -98,7 +98,7 @@ export const deleteNote = async (req, res, next) => {
 
         await session.commitTransaction();
         session.endSession();
-        res.status(200).json('Note has been deleted...');
+        res.status(200).json(sendSuccessResponse(200,'Note has been deleted...',[]));
     } catch (error) {
         await session.abortTransaction();
         session.endSession();
@@ -112,7 +112,7 @@ export const updateNote = async (req, res, next) => {
         return next(errorHandler(400, 'Validation fails when trying to update note', errors.array()));
     }
     const { id } = matchedData(req, { locations: ['params'] });
-    const { title, content, styleModel } = matchedData(req);
+    const { title, content, brief } = matchedData(req);
 
     try {
         const note = await Note.findById(id);
@@ -122,44 +122,37 @@ export const updateNote = async (req, res, next) => {
             return next(errorHandler(403, 'Unauthorized Access when trying to update Note'));
         }
 
-        if (title && title !== note.title) {
-            const session = await mongoose.startSession();
-            try {
-                session.startTransaction();
+       
+        const session = await mongoose.startSession();
+        try {
+            session.startTransaction();
 
-                const updatedNote = await note.updateOne({ title, content, styleModel }, { session });
-
-                if (!updatedNote || !updatedNote.acknowledged || updatedNote.modifiedCount !== 1 || updatedNote.matchedCount !== 1) {
-                    throw errorHandler(500, 'Note update failed');
-                }
-
-                const updateResult = await User.updateOne(
-                    { _id: req.user.id, 'notes._id': id },
-                    { $set: { 'notes.$.title': title } },
-                    { session }
-                );
-
-                if (!updateResult || !updateResult.acknowledged || updateResult.modifiedCount !== 1 || updateResult.matchedCount !== 1) {
-                    throw errorHandler(500, 'An error occurred while updating the user\'s notes section.');
-                }
-
-                await session.commitTransaction();
-                session.endSession();
-                return res.status(200).json("Note has been updated...");
-
-            } catch (error) {
-                await session.abortTransaction();
-                session.endSession();
-                return next(error);
-            }
-        } else {
-            const updatedNote = await note.updateOne({ title, content, styleModel });
+            const updatedNote = await note.updateOne({ title, content }, { session });
 
             if (!updatedNote || !updatedNote.acknowledged || updatedNote.modifiedCount !== 1 || updatedNote.matchedCount !== 1) {
                 throw errorHandler(500, 'Note update failed');
             }
-            return res.status(200).json("Note has been updated...");
+
+            const updateResult = await User.updateOne(
+                { _id: req.user.id, 'notes._id': id },
+                { $set: { 'notes.$.title': title ,'notes.$.brief':brief,"notes.$.updatedAt":Date.now()} },
+                { session }
+            );
+
+            if (!updateResult || !updateResult.acknowledged || updateResult.modifiedCount !== 1 || updateResult.matchedCount !== 1) {
+                throw errorHandler(500, 'An error occurred while updating the user\'s notes section.');
+            }
+
+            await session.commitTransaction();
+            session.endSession();
+            return res.status(200).json(sendSuccessResponse(200,'Note has been updated...',[]));
+
+        } catch (error) {
+            await session.abortTransaction();
+            session.endSession();
+            return next(error);
         }
+        
 
     } catch (error) {
         next(error);
