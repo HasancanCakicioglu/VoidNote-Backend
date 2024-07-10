@@ -30,14 +30,15 @@ export const createNote = async (req, res, next) => {
         if (!updateResult.acknowledged || updateResult.modifiedCount !== 1 || updateResult.matchedCount !== 1) {
             throw errorHandler(500, 'An error occurred while updating the user\'s notes section.');
         }
-
         await session.commitTransaction();
-        session.endSession();
         res.status(201).json(sendSuccessResponse(201,'Note has been created...', note));
     } catch (error) {
-        await session.abortTransaction();
-        session.endSession();
+        if (session.transaction.isActive) { // Check if the transaction is active
+            await session.abortTransaction();
+        }
         next(error);
+    }finally {
+        session.endSession(); // Ensure session ends properly in all cases
     }
 }
 
@@ -97,12 +98,14 @@ export const deleteNote = async (req, res, next) => {
         }
 
         await session.commitTransaction();
-        session.endSession();
         res.status(200).json(sendSuccessResponse(200,'Note has been deleted...',[]));
-    } catch (error) {
-        await session.abortTransaction();
-        session.endSession();
+    }  catch (error) {
+        if (session.transaction.isActive) { 
+            await session.abortTransaction();
+        }
         next(error);
+    }finally {
+        session.endSession();
     }
 }
 
@@ -121,7 +124,6 @@ export const updateNote = async (req, res, next) => {
         if (note.userID.toString() !== req.user.id) {
             return next(errorHandler(403, 'Unauthorized Access when trying to update Note'));
         }
-
        
         const session = await mongoose.startSession();
         try {
@@ -144,13 +146,15 @@ export const updateNote = async (req, res, next) => {
             }
 
             await session.commitTransaction();
-            session.endSession();
             return res.status(200).json(sendSuccessResponse(200,'Note has been updated...',[]));
 
         } catch (error) {
-            await session.abortTransaction();
+            if (session.transaction.isActive) { 
+                await session.abortTransaction();
+            }
+            next(error);
+        }finally {
             session.endSession();
-            return next(error);
         }
         
 

@@ -3,6 +3,7 @@ import { Todo, SubTodo } from "../models/todo.model.js";
 import { validationResult, matchedData } from 'express-validator';
 import User from '../models/user.model.js';
 import { errorHandler } from "../utils/error.js";
+import { sendSuccessResponse } from "../utils/success.js";
 
 
 export const createTodo = async (req, res, next) => {
@@ -21,7 +22,7 @@ export const createTodo = async (req, res, next) => {
 
         const updateResult = await User.updateOne(
             { _id: req.user.id },
-            { $push: { todos: { _id: todo._id, title: todo.title } } },
+            { $push: { todos: { _id: todo._id, title: todo.title, updatedAt: todo.updatedAt, totalJobs: 0, completedJobs: 0 } } },
 
         ).session(session);
 
@@ -30,12 +31,14 @@ export const createTodo = async (req, res, next) => {
         }
 
         await session.commitTransaction();
-        session.endSession();
-        res.status(201).json({ message: 'todo created successfully', data: todo });
+        res.status(201).json(sendSuccessResponse(201, 'Todo has been created...', todo));
     } catch (error) {
-        await session.abortTransaction();
-        session.endSession();
+        if (session.transaction.isActive) {
+            await session.abortTransaction();
+        }
         next(error);
+    } finally {
+        session.endSession();
     }
 }
 
@@ -56,7 +59,7 @@ export const getTodo = async (req, res, next) => {
         if (todo.userID.toString() !== req.user.id) {
             throw errorHandler(403, 'Unauthorized Access when trying to fetch Todo');
         }
-        res.status(200).json({ message: 'Todo fetched successfully', data: todo });
+        res.status(200).json(sendSuccessResponse(200, 'Todo has been fetched...', todo));
     } catch (error) {
         next(error);
     }
@@ -99,12 +102,14 @@ export const deleteTodo = async (req, res, next) => {
         }
 
         await session.commitTransaction();
-        session.endSession();
-        res.status(200).json({ message: 'Todo deleted successfully' });
+        res.status(200).json(sendSuccessResponse(200, 'Todo has been deleted...'));
     } catch (error) {
-        await session.abortTransaction();
-        session.endSession();
+        if (session.transaction.isActive) {
+            await session.abortTransaction();
+        }
         next(error);
+    } finally {
+        session.endSession();
     }
 }
 
@@ -189,7 +194,7 @@ export const createSubTodo = async (req, res, next) => {
             throw errorHandler(500, 'SubTodo creation failed');
         }
 
-        res.status(201).json({ message: 'SubTodo created successfully', data: subTodo});
+        res.status(201).json({ message: 'SubTodo created successfully', data: subTodo });
     } catch (error) {
         next(error);
     }

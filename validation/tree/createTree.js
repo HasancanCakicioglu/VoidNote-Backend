@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 
 export const createTreeValidationSchema = {
-    parentID: {
+    parent_id: {
         in: ['body'],
         optional: { nullable: true },
         required: false,

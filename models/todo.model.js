@@ -13,7 +13,8 @@ const subTodoSchema = new mongoose.Schema({
 const todoSchema = new mongoose.Schema({
     userID: { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'User' },
     title: { type: String, default: ''},
-    done: { type: Boolean, default: false },
+    completedJobs: { type: Number, default: 0 },
+    totalJobs: { type: Number, default: 0 },
     todos: [subTodoSchema]
 }, { timestamps: true });
 

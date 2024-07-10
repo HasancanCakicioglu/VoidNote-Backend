@@ -59,10 +59,12 @@ app.use((err, req, res, next) => {
   const status = err.statusCode || 500;
   const message = err.message || 'Internal Server Error';
   const validation = err.validation || [];
+  const data = err.data || [];
   return res.status(status).json({
     success: false,
     message,
     status,
+    data,
     validation,
   });
 });

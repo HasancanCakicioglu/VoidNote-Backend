@@ -20,7 +20,7 @@ export const updateTreeValidationSchema = {
             options: { min: 1 , max:50},
         },
     },
-    parentID: {
+    parent_id: {
         in: ['body'],
         optional: { nullable: true },
         required: false,
@@ -37,10 +37,11 @@ export const updateTreeValidationSchema = {
         required:false,
         optional: { nullable: true }
     },
-    styleModel: {
+    brief: {
         in: ['body'],
-        isObject: true,
-        required:false,
-        optional: { nullable: true }
+        isString: true,
+        required: false,
+        optional: { nullable: true ,max:50}
     },
+
 };

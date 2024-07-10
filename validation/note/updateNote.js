@@ -24,9 +24,8 @@ export const updateNoteValidationSchema = {
     },
     brief: {
         in: ['body'],
-        maxLength: 50,
         isString: true,
         required: false,
-        optional: { nullable: true }
+        optional: { nullable: true ,max:50}
     },
 };
