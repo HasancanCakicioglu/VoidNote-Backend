@@ -6,6 +6,7 @@ import { createSubTodo, createTodo, deleteSubTodo, deleteTodo, getTodo, updateSu
 import { updateTodoValidationSchema } from '../validation/todo/updateTodo.js';
 import { updateSubTodoValidationSchema } from '../validation/todo/updateSubTodo.js';
 import { deleteSubTodoValidationSchema } from '../validation/todo/deleteSubTodo.js';
+import { createSubTodoValidationSchema } from '../validation/todo/createSubTodo.js';
 
 
 
@@ -16,7 +17,7 @@ router.get('/get/:id',verifyToken,checkSchema(IdValidationSchema),getTodo);
 router.delete('/delete/:id', verifyToken,checkSchema(IdValidationSchema),deleteTodo);
 router.post('/update/:id',verifyToken, checkSchema(updateTodoValidationSchema),updateTodo);
 
-router.post('/create/subtodo/:id',verifyToken,checkSchema(IdValidationSchema),createSubTodo);
+router.post('/create/subtodo/:id',verifyToken,checkSchema(createSubTodoValidationSchema),createSubTodo);
 router.post('/update/subtodo/:todoId/:subTodoId',verifyToken, checkSchema(updateSubTodoValidationSchema),updateSubTodo);
 router.delete('/delete/subtodo/:todoId/:subTodoId',verifyToken, checkSchema(deleteSubTodoValidationSchema),deleteSubTodo);
 

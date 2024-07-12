@@ -156,12 +156,14 @@ export const updateTodo = async (req, res, next) => {
         }
 
         await session.commitTransaction();
-        session.endSession();
-        res.status(200).json({ message: 'Todo updated successfully' });
+        res.status(200).json(sendSuccessResponse(200, 'Todo has been updated...'));
     } catch (error) {
-        await session.abortTransaction();
-        session.endSession();
+        if (session.transaction.isActive) {
+            await session.abortTransaction();
+        }
         next(error);
+    } finally {
+        session.endSession();
     }
 }
 
@@ -173,6 +175,7 @@ export const createSubTodo = async (req, res, next) => {
         return next(errorHandler(400, 'Validation fails when trying to create subtodo ', errors.array()));
     }
     const { id } = matchedData(req, { locations: ['params'] });
+    const { content, priority, completed } = matchedData(req);
 
     try {
         const todo = await Todo.findOne({ _id: id });
@@ -184,8 +187,13 @@ export const createSubTodo = async (req, res, next) => {
             throw errorHandler(403, 'Unauthorized Access when trying to create SubTodo');
         }
 
-        const subTodo = new SubTodo();
-
+        const subTodo = new SubTodo(
+            {
+                content,
+                priority,
+                completed,
+            }
+        );
         todo.todos.push(subTodo);
 
         const updateResult = await todo.save();
@@ -194,7 +202,7 @@ export const createSubTodo = async (req, res, next) => {
             throw errorHandler(500, 'SubTodo creation failed');
         }
 
-        res.status(201).json({ message: 'SubTodo created successfully', data: subTodo });
+        res.status(201).json(sendSuccessResponse(201, 'SubTodo has been created...', subTodo));
     } catch (error) {
         next(error);
     }

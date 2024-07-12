@@ -1,10 +1,8 @@
 import mongoose from 'mongoose';
-import styleSchema from './style.model.js';
 
 // Alt Todos Şeması
 const subTodoSchema = new mongoose.Schema({
     content: { type: String , default: ''},
-    styleModel: styleSchema,
     completed: { type: Boolean, default: false },
     priority: { type: Number, default: 1 } // 1: Low, 2: Medium, 3: High
 }, { timestamps: true });
