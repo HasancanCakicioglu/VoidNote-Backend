@@ -3,6 +3,7 @@ import { validationResult, matchedData } from 'express-validator';
 import mongoose from 'mongoose';
 import User from '../models/user.model.js';
 import { Calendar ,SubCalendar} from '../models/calendar.model.js';
+import { sendSuccessResponse } from '../utils/success.js';
 
 
 export const createCalendar = async (req, res, next) => {
@@ -31,7 +32,7 @@ export const createCalendar = async (req, res, next) => {
 
         await session.commitTransaction();
         session.endSession();
-        res.status(201).json({ message: 'calendar created successfully' ,data:calendar});
+        res.status(201).json(sendSuccessResponse(201, 'Calendar has been created...', calendar));
     } catch (error) {
         await session.abortTransaction();
         session.endSession();
@@ -58,7 +59,7 @@ export const getCalendar = async (req, res, next) => {
             throw errorHandler(403, 'Unauthorized Access when trying to fetch Calendar');
         }
 
-        res.status(200).json({ message: 'Calendar fetched successfully', data: calendar });
+        res.status(200).json(sendSuccessResponse(200, 'Calendar has been fetched...', calendar));
     } catch (error) {
         next(error);
     }
@@ -106,7 +107,7 @@ export const deleteCalendar = async (req, res, next) => {
 
         await session.commitTransaction();
         session.endSession();
-        res.status(200).json({ message: 'Calendar deleted successfully' });
+        res.status(200).json(sendSuccessResponse(200, 'Calendar has been deleted...'));
     } catch (error) {
         await session.abortTransaction();
         session.endSession();
@@ -176,7 +177,7 @@ export const createSubCalendar = async (req, res, next) => {
     }
 
     const { id } = matchedData(req, { locations: ['params'] });
-    const { title, date } = matchedData(req);
+    const {  date } = matchedData(req);
 
     try {
         const calendar = await Calendar.findOne({ _id: id });
@@ -186,7 +187,6 @@ export const createSubCalendar = async (req, res, next) => {
         }
 
         const createdSubCalendar = await SubCalendar({ 
-            title:title,
             date:date,
         });
 
@@ -195,11 +195,11 @@ export const createSubCalendar = async (req, res, next) => {
         }
 
         // Tek nesneyi ekliyoruz
-        calendar.notes.push(createdSubCalendar);
+        calendar.calendars.push(createdSubCalendar);
 
         await calendar.save();
 
-        res.status(201).json({ message: 'SubCalendar created successfully', data: createdSubCalendar });
+        res.status(201).json(sendSuccessResponse(201, 'SubCalendar created successfully', createdSubCalendar));
     } catch (error) {
         next(error);
     }
@@ -221,7 +221,7 @@ export const deleteSubCalendar = async (req, res, next) => {
         }
 
         // Alt takvimi sil
-        calendar.notes.pull(subId);
+        calendar.calendars.pull(subId);
 
         const updateResult = await calendar.save();
 
@@ -229,7 +229,7 @@ export const deleteSubCalendar = async (req, res, next) => {
             throw errorHandler(500, 'SubCalendar deletion failed');
         }
 
-        res.status(200).json({ message: 'SubCalendar deleted successfully' });
+        res.status(200).json(sendSuccessResponse(200, 'SubCalendar deleted successfully'));
     } catch (error) {
         next(error);
     }
@@ -243,7 +243,7 @@ export const updateSubCalendar = async (req, res, next) => {
     }
 
     const { id, subId } = matchedData(req, { locations: ['params'] });
-    const { title, date, content, styleModel } = matchedData(req);
+    const { title, date, content } = matchedData(req);
 
     try {
         const calendar = await Calendar.findOne({ _id: id });
@@ -252,7 +252,7 @@ export const updateSubCalendar = async (req, res, next) => {
             throw errorHandler(404, 'Calendar not found when trying to update SubCalendar');
         }
 
-        const subCalendar = calendar.notes.id(subId);
+        const subCalendar = calendar.calendars.id(subId);
 
         if (!subCalendar) {
             throw errorHandler(404, 'SubCalendar not found when trying to update SubCalendar');
@@ -262,7 +262,6 @@ export const updateSubCalendar = async (req, res, next) => {
         if (title !== undefined) subCalendar.title = title;
         if (date !== undefined) subCalendar.date = date;
         if (content !== undefined) subCalendar.content = content;
-        if (styleModel !== undefined) subCalendar.style = styleModel;
 
         const updateResult = await calendar.save();
 
@@ -270,7 +269,34 @@ export const updateSubCalendar = async (req, res, next) => {
             throw errorHandler(500, 'SubCalendar update failed');
         }
 
-        res.status(200).json({ message: 'SubCalendar updated successfully' });
+        res.status(200).json(sendSuccessResponse(200, 'SubCalendar updated successfully', subCalendar));
+    } catch (error) {
+        next(error);
+    }
+}
+
+export const getSubCalendar = async (req, res, next) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return next(errorHandler(400, 'Validation failed', errors.array()));
+    }
+
+    const { id, subId } = matchedData(req, { locations: ['params'] });
+
+    try {
+        const calendar = await Calendar.findOne({ _id: id });
+
+        if (!calendar) {
+            throw errorHandler(404, 'Calendar not found when trying to fetch SubCalendar');
+        }
+
+        const subCalendar = calendar.calendars.id(subId);
+
+        if (!subCalendar) {
+            throw errorHandler(404, 'SubCalendar not found when trying to fetch SubCalendar');
+        }
+
+        res.status(200).json(sendSuccessResponse(200, 'SubCalendar fetched successfully', subCalendar));
     } catch (error) {
         next(error);
     }

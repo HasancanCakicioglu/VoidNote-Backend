@@ -1,11 +1,9 @@
 import mongoose from 'mongoose';
-import styleSchema from './style.model.js';
 
 // Alt Notlar (Notes) Şeması
 const subCalendarSchema = new mongoose.Schema({
     title: { type: String, default: ''},
     content: { type: String, default: '' },
-    style: styleSchema,
     date: { type: Date, required: true },
 }, { timestamps: true });
 
@@ -13,8 +11,7 @@ const subCalendarSchema = new mongoose.Schema({
 const calendarSchema = new mongoose.Schema({
     userID: { type: mongoose.Schema.Types.ObjectId, required: true, ref: 'User' },
     title: { type: String ,default: ''},
-    calenders: [{ date: { type: [Date] }, title: { type: String } }],
-    notes: [subCalendarSchema]
+    calendars: [subCalendarSchema]
 }, { timestamps: true });
 
 // Calendar modelini oluştur

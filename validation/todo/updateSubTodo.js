@@ -41,10 +41,4 @@ export const updateSubTodoValidationSchema = {
         required:false,
         optional: { nullable: true }
     },
-    styleModel: {
-        in: ['body'],
-        isObject: true,
-        required:false,
-        optional: { nullable: true }
-    },
 };

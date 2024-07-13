@@ -39,18 +39,8 @@ export const updateSubCalenderValidationSchema = {
     content: {
         in: ['body'],
         isString: true,
-        isLength: {
-            errorMessage: 'Content should be at least 1 chars long',
-            options: { min: 1 , max:50},
-        },
         optional: { nullable: true },
         required:false
-    },
-    styleModel: {
-        in: ['body'],
-        isObject: true,
-        required:false,
-        optional: { nullable: true }
     },
 
 };

@@ -215,7 +215,7 @@ export const updateSubTodo = async (req, res, next) => {
         return next(errorHandler(400, 'Validation fails when trying to update subtodo', errors.array()));
     }
     const { todoId, subTodoId } = matchedData(req, { locations: ['params'] });
-    const { content, completed, priority, styleModel } = matchedData(req);
+    const { content, completed, priority } = matchedData(req);
 
     try {
         const todo = await Todo.findOne({ _id: todoId });
@@ -237,7 +237,6 @@ export const updateSubTodo = async (req, res, next) => {
         if (content !== undefined) subTodo.content = content;
         if (completed !== undefined) subTodo.completed = completed;
         if (priority !== undefined) subTodo.priority = priority;
-        if (styleModel !== undefined) subTodo.styleModel = styleModel;
 
         todo.todos.id(subTodoId).set(subTodo);
 
@@ -247,7 +246,7 @@ export const updateSubTodo = async (req, res, next) => {
             throw errorHandler(500, 'SubTodo update failed  when trying to update SubTodo');
         }
 
-        res.status(200).json({ message: 'SubTodo updated successfully' });
+        res.status(200).json(sendSuccessResponse(200, 'SubTodo has been updated...'));
     } catch (error) {
         next(error);
     }
@@ -287,7 +286,7 @@ export const deleteSubTodo = async (req, res, next) => {
             throw errorHandler(500, 'SubTodo deletion failed');
         }
 
-        res.status(200).json({ message: 'SubTodo deleted successfully' });
+        res.status(200).json(sendSuccessResponse(200, 'SubTodo has been deleted...'));
     } catch (error) {
         next(error);
     }

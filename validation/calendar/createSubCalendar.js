@@ -10,18 +10,7 @@ export const createSubCalenderValidationSchema = {
             errorMessage: 'ID must be a valid ObjectId'
         }
     },
-    title: {
-        in: ['body'],
-        isString: true,
-        isLength: {
-            errorMessage: 'Title should be at least 1 chars long',
-            options: { min: 1 , max:50},
-        },
-        required:false,
-        optional: { nullable: true }
-    },
     date: {
         in: ['body'],
-        isDate: true,
     },
 };
