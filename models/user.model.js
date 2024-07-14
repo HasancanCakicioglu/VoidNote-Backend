@@ -22,6 +22,7 @@ const userSchema = new mongoose.Schema({
     {
       _id: { type: mongoose.Schema.Types.ObjectId},
       parent_id: { type: mongoose.Schema.Types.ObjectId, required: false, },
+      children_id: [{ type: mongoose.Schema.Types.ObjectId, required: false }],
       title: { type: String , required: true },
       brief: { type: String ,maxlength: 50, default:""},
       updatedAt: { type: Date }
