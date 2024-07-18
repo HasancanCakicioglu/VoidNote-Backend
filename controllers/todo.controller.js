@@ -168,17 +168,20 @@ export const updateTodo = async (req, res, next) => {
 }
 
 
-
 export const createSubTodo = async (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-        return next(errorHandler(400, 'Validation fails when trying to create subtodo ', errors.array()));
+        return next(errorHandler(400, 'Validation fails when trying to create subtodo', errors.array()));
     }
     const { id } = matchedData(req, { locations: ['params'] });
     const { content, priority, completed } = matchedData(req);
 
+    const session = await mongoose.startSession();
+
     try {
-        const todo = await Todo.findOne({ _id: id });
+        session.startTransaction();
+
+        const todo = await Todo.findOne({ _id: id }).session(session);
         if (!todo) {
             throw errorHandler(404, 'Todo not found when trying to create SubTodo');
         }
@@ -187,27 +190,42 @@ export const createSubTodo = async (req, res, next) => {
             throw errorHandler(403, 'Unauthorized Access when trying to create SubTodo');
         }
 
-        const subTodo = new SubTodo(
-            {
-                content,
-                priority,
-                completed,
-            }
-        );
+        const subTodo = new SubTodo({
+            content,
+            priority,
+            completed,
+        });
+
         todo.todos.push(subTodo);
 
-        const updateResult = await todo.save();
+        const updateResult = await todo.save({ session });
 
         if (!updateResult) {
             throw errorHandler(500, 'SubTodo creation failed');
         }
 
+        const userResult = await User.updateOne(
+            { _id: req.user.id, 'todos._id': id },
+            {
+                $inc: { 'todos.$.totalJobs': 1 },
+            }
+        ).session(session);
+
+        if (!userResult.acknowledged || userResult.modifiedCount !== 1 || userResult.matchedCount !== 1) {
+            throw errorHandler(500, 'An error occurred while updating the user\'s todos section.');
+        }
+
+        await session.commitTransaction();
         res.status(201).json(sendSuccessResponse(201, 'SubTodo has been created...', subTodo));
     } catch (error) {
+        if (session.transaction.isActive) {
+            await session.abortTransaction();
+        }
         next(error);
+    } finally {
+        session.endSession();
     }
-}
-
+};
 
 export const updateSubTodo = async (req, res, next) => {
     const errors = validationResult(req);
@@ -217,8 +235,12 @@ export const updateSubTodo = async (req, res, next) => {
     const { todoId, subTodoId } = matchedData(req, { locations: ['params'] });
     const { content, completed, priority } = matchedData(req);
 
+    const session = await mongoose.startSession();
+
     try {
-        const todo = await Todo.findOne({ _id: todoId });
+        session.startTransaction();
+
+        const todo = await Todo.findOne({ _id: todoId }).session(session);
 
         if (!todo) {
             throw errorHandler(404, 'Todo not found when trying to update SubTodo');
@@ -238,30 +260,50 @@ export const updateSubTodo = async (req, res, next) => {
         if (completed !== undefined) subTodo.completed = completed;
         if (priority !== undefined) subTodo.priority = priority;
 
-        todo.todos.id(subTodoId).set(subTodo);
-
-        const updateResult = await todo.save();
+        const updateResult = await todo.save({ session });
 
         if (!updateResult) {
             throw errorHandler(500, 'SubTodo update failed  when trying to update SubTodo');
         }
 
+        const totalJobs = todo.todos.length;
+        const completedJobs = todo.todos.filter(todo => todo.completed).length;
+
+        const userResult = await User.updateOne(
+            { _id: req.user.id, 'todos._id': todoId },
+            { $set: { 'todos.$.completedJobs': completedJobs } }
+        ).session(session);
+
+        if (!userResult.acknowledged || userResult.modifiedCount !== 1 || userResult.matchedCount !== 1) {
+            throw errorHandler(500, 'An error occurred while updating the user\'s todos section.');
+        }
+
+        await session.commitTransaction();
         res.status(200).json(sendSuccessResponse(200, 'SubTodo has been updated...'));
     } catch (error) {
+        if (session.transaction.isActive) {
+            await session.abortTransaction();
+        }
         next(error);
+    } finally {
+        session.endSession();
     }
-}
+};
 
 
 export const deleteSubTodo = async (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-        return next(errorHandler(400, 'Validation fails when trying to delete subtodo ', errors.array()));
+        return next(errorHandler(400, 'Validation fails when trying to delete subtodo', errors.array()));
     }
     const { todoId, subTodoId } = matchedData(req, { locations: ['params'] });
 
+    const session = await mongoose.startSession();
+
     try {
-        const todo = await Todo.findOne({ _id: todoId });
+        session.startTransaction();
+
+        const todo = await Todo.findOne({ _id: todoId }).session(session);
 
         if (!todo) {
             throw errorHandler(404, 'Todo not found when trying to delete SubTodo');
@@ -270,7 +312,6 @@ export const deleteSubTodo = async (req, res, next) => {
         if (todo.userID.toString() !== req.user.id) {
             throw errorHandler(403, 'Unauthorized Access when trying to delete SubTodo');
         }
-
         const subTodo = todo.todos.id(subTodoId);
 
         if (!subTodo) {
@@ -282,12 +323,36 @@ export const deleteSubTodo = async (req, res, next) => {
             { $pull: { todos: { _id: subTodoId } } },
         );
 
+
         if (!updateResult) {
             throw errorHandler(500, 'SubTodo deletion failed');
         }
 
+        const totalJobs = todo.todos.length-1;
+        const completedJobs = todo.todos.filter(todo => todo.completed).length;
+        if (subTodo.completed) {
+            completedJobs = completedJobs - 1;
+        }
+
+        const userResult = await User.updateOne(
+            { _id: req.user.id, 'todos._id': todoId },
+            {
+                $set: { 'todos.$.completedJobs': completedJobs, 'todos.$.totalJobs': totalJobs }
+            }
+        ).session(session);
+
+        if (!userResult.acknowledged || userResult.modifiedCount !== 1 || userResult.matchedCount !== 1) {
+            throw errorHandler(500, 'An error occurred while updating the user\'s todos section.');
+        }
+
+        await session.commitTransaction();
         res.status(200).json(sendSuccessResponse(200, 'SubTodo has been deleted...'));
     } catch (error) {
+        if (session.transaction.isActive) {
+            await session.abortTransaction();
+        }
         next(error);
+    } finally {
+        session.endSession();
     }
-}
+};

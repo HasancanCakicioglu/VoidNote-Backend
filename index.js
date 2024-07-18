@@ -5,6 +5,7 @@ import notesRoutes from './routes/note.route.js';
 import todoRoutes from './routes/todo.route.js';
 import treeRoutes from './routes/tree.route.js';
 import calenderRoutes from './routes/calendar.route.js';
+import mainRoutes from './routes/main.route.js';
 import cookieParser from 'cookie-parser';
 import connectMongoDB from './config/mongoose.js';
 import helmet from "helmet";
@@ -52,6 +53,8 @@ app.use("/api/note", notesRoutes);
 app.use("/api/todo", todoRoutes);
 app.use("/api/tree", treeRoutes);
 app.use("/api/calendar", calenderRoutes);
+
+app.use("/api/main", mainRoutes);
 
 
 // Error handling middleware
