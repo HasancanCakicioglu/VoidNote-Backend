@@ -329,9 +329,11 @@ export const deleteSubTodo = async (req, res, next) => {
         }
 
         const totalJobs = todo.todos.length-1;
-        const completedJobs = todo.todos.filter(todo => todo.completed).length;
+        let completedJobs = todo.todos.filter(todo => todo.completed).length;
+
         if (subTodo.completed) {
             completedJobs = completedJobs - 1;
+            
         }
 
         const userResult = await User.updateOne(

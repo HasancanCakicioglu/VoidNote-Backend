@@ -82,65 +82,90 @@ export const getTreeNote = async (req, res, next) => {
         next(error);
     }
 }
+
+const findAllChildren = async (treeId, userTrees) => {
+  const children = [];
+  const findChildrenRecursively = (id) => {
+      const node = userTrees.find(tree => tree._id.toString() === id.toString());
+      if (node) {
+        children.push(id.toString()); // Ensure ID is of type ObjectId
+        node.children_id.forEach(childId => findChildrenRecursively(childId));
+      }
+  };
+  findChildrenRecursively(treeId);
+  return children;
+};
+
 export const deleteTreeNote = async (req, res, next) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
       return next(errorHandler(400, 'Validation fails when trying to delete Tree', errors.array()));
-    }
-  
-    const { id } = matchedData(req, { locations: ['params'] });
-    const session = await mongoose.startSession();
-  
-    try {
+  }
+
+  const { id } = matchedData(req, { locations: ['params'] });
+  const session = await mongoose.startSession();
+
+  try {
       session.startTransaction();
-  
-      const treeNote = await Tree.findById(id).session(session);
+
+      const user = await User.findById(req.user.id).session(session);
+      if (!user) {
+          throw errorHandler(404, 'User not found');
+      }
+
+      const treeNote = user.trees.find(tree => tree._id.toString() === id);
       if (!treeNote) {
-        throw errorHandler(404, 'TreeNote not found');
+          throw errorHandler(404, 'TreeNote not found in user\'s trees');
       }
-  
-      if (treeNote.userID.toString() !== req.user.id) {
-        throw errorHandler(403, 'Unauthorized Access when trying to delete TreeNote');
+
+      // Find all children of the tree note to be deleted
+      const allIdsToDelete = await findAllChildren(id, user.trees);
+
+      const objectIdsToDelete = allIdsToDelete.map(id => new mongoose.Types.ObjectId(id));
+
+      // Delete all tree notes
+      const deleteResult = await Tree.deleteMany({ _id: { $in: allIdsToDelete } }, { session });
+      if (!deleteResult.acknowledged || deleteResult.deletedCount !== allIdsToDelete.length) {
+          throw errorHandler(500, 'TreeNote deletion failed');
       }
-  
-      const deleteResult = await Tree.deleteOne({ _id: id }, { session });
-      if (!deleteResult.acknowledged || deleteResult.deletedCount !== 1) {
-        throw errorHandler(500, 'TreeNote deletion failed');
-      }
-  
-      // Remove the tree note from the user's trees array
+
+      // Remove the tree notes from the user's trees array
       const updateResult = await User.updateOne(
-        { _id: req.user.id },
-        { $pull: { trees: { _id: id } } },
-        { session }
-      );
-      if (!updateResult.acknowledged || updateResult.modifiedCount !== 1 || updateResult.matchedCount !== 1) {
-        throw errorHandler(500, 'An error occurred while updating the user\'s trees section.');
-      }
-  
-      // Update the parent tree's children_id array if the tree note has a parent
-      if (treeNote.parent) {
-        const parentUpdateResult = await User.updateOne(
-          { _id: req.user.id, 'trees._id': treeNote.parent },
-          { $pull: { 'trees.$.children_id': treeNote._id } },
+          { _id: req.user.id },
+          { $pull: { trees: { _id: { $in: objectIdsToDelete } } } },
           { session }
-        );
-        if (!parentUpdateResult.acknowledged || parentUpdateResult.modifiedCount !== 1 || parentUpdateResult.matchedCount !== 1) {
-          throw errorHandler(500, 'An error occurred while updating the parent tree\'s children section.');
-        }
+      );
+
+      if (!updateResult.acknowledged || updateResult.modifiedCount !== 1 || updateResult.matchedCount !== 1) {
+          throw errorHandler(500, 'An error occurred while updating the user\'s trees section.');
       }
-  
+
+      const parent_id = treeNote.parent_id;
+      if (parent_id) {
+          const updatedResult = await User.updateOne(
+              { _id: req.user.id, 'trees._id': new mongoose.Types.ObjectId(parent_id) },
+              { $pull: { 'trees.$.children_id': new mongoose.Types.ObjectId(id)} },
+              { session }
+          );
+
+          if (!updatedResult.acknowledged || updatedResult.modifiedCount !== 1 || updatedResult.matchedCount !== 1) {
+              throw errorHandler(500, 'An error occurred while updating the user\'s trees section.');
+          }
+
+      }
+
       await session.commitTransaction();
-      res.status(200).json(sendSuccessResponse(200, 'TreeNote has been deleted...', []));
-    } catch (error) {
+      res.status(200).json(sendSuccessResponse(200, 'TreeNote and its children have been deleted...', []));
+  } catch (error) {
+    console.log(error);
       if (session.inTransaction()) {
-        await session.abortTransaction();
+          await session.abortTransaction();
       }
       next(error);
-    } finally {
+  } finally {
       session.endSession();
-    }
-  };
+  }
+};
 
 export const updateTreeNote = async (req, res, next) => {
     const errors = validationResult(req);
