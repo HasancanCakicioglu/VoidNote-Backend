@@ -173,7 +173,7 @@ export const updateTreeNote = async (req, res, next) => {
         return next(errorHandler(400, 'Validation fails when trying to update Tree', errors.array()));
     }
     const { id } = matchedData(req, { locations: ['params'] });
-    const { title, content, brief } = matchedData(req);
+    const { title, content, brief,variables } = matchedData(req);
 
     const session = await mongoose.startSession();
     try {
@@ -190,7 +190,7 @@ export const updateTreeNote = async (req, res, next) => {
 
         const updateResult = await Tree.updateOne(
             { _id: id },
-            { title: title, content: content },
+            { title: title, content: content ,variables:variables},
             { session }
         );
 
@@ -217,6 +217,34 @@ export const updateTreeNote = async (req, res, next) => {
         next(error);
     } finally {
         session.endSession();
+    }
+}
+
+
+export const getTreeNoteVariable = async (req, res, next) => {
+    console.log("getTreeNoteVariable");
+
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return next(errorHandler(400, 'Validation fails when trying to fetch tree', errors.array()));
+    }
+    const { id } = matchedData(req, { locations: ['params'] });
+
+    try {
+
+        const treeNote = await Tree.findById(id, { userID: 1, variables: 1 });
+
+        if (!treeNote) {
+            throw errorHandler(404, 'TreeNote not found when trying to fetch TreeNote');
+        }
+
+        if (treeNote.userID.toString() !== req.user.id) {
+            throw errorHandler(403, 'Unauthorized Access when trying to fetch TreeNote');
+        }
+
+        res.status(200).json(sendSuccessResponse(200, 'TreeNote has been fetched...', treeNote));
+    } catch (error) {
+        next(error);
     }
 }
 

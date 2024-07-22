@@ -115,7 +115,7 @@ export const updateNote = async (req, res, next) => {
         return next(errorHandler(400, 'Validation fails when trying to update note', errors.array()));
     }
     const { id } = matchedData(req, { locations: ['params'] });
-    const { title, content, brief } = matchedData(req);
+    const { title, content, brief , variables } = matchedData(req);
 
     try {
         const note = await Note.findById(id);
@@ -129,7 +129,7 @@ export const updateNote = async (req, res, next) => {
         try {
             session.startTransaction();
 
-            const updatedNote = await note.updateOne({ title, content }, { session });
+            const updatedNote = await note.updateOne({ title, content , variables }, { session });
 
             if (!updatedNote || !updatedNote.acknowledged || updatedNote.modifiedCount !== 1 || updatedNote.matchedCount !== 1) {
                 throw errorHandler(500, 'Note update failed');
@@ -158,6 +158,30 @@ export const updateNote = async (req, res, next) => {
         }
         
 
+    } catch (error) {
+        next(error);
+    }
+}
+
+
+export const getNoteVariables = async (req, res, next) => {
+
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return next(errorHandler(400, 'Validation fails when trying to fetch note', errors.array()));
+    }
+    const { id } = matchedData(req, { locations: ['params'] });
+
+    try {
+        const note = await Note.findById(id, { userID: 1, variables: 1 });
+
+        if (!note) return next(errorHandler(404, 'Note not found'));
+        
+        if (note.userID.toString() !== req.user.id) {
+            return next(errorHandler(403, 'Unauthorized Access when trying to fetch Note'));
+        }
+
+        res.status(200).json(sendSuccessResponse(200,'Note has been fetched...', note));
     } catch (error) {
         next(error);
     }

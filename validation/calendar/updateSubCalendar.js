@@ -23,12 +23,8 @@ export const updateSubCalenderValidationSchema = {
     title: {
         in: ['body'],
         isString: true,
-        isLength: {
-            errorMessage: 'Title should be at least 1 chars long',
-            options: { min: 1 , max:50},
-        },
-        optional: { nullable: true },
-        required:false
+        required: false,
+        optional: { nullable: true }
     },
     date: {
         in: ['body'],
@@ -42,5 +38,16 @@ export const updateSubCalenderValidationSchema = {
         optional: { nullable: true },
         required:false
     },
+    variables:{
+        in: ['body'],
+        custom: {
+            options: (value) => {
+                return typeof value === 'object';
+            },
+            errorMessage: 'Variables should be an object'
+        },
+        optional: { nullable: true },
+        required:false
+    }
 
 };

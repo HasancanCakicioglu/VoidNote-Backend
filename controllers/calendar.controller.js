@@ -243,10 +243,13 @@ export const updateSubCalendar = async (req, res, next) => {
     }
 
     const { id, subId } = matchedData(req, { locations: ['params'] });
-    const { title, date, content } = matchedData(req);
+    const { title, date, content, variables } = matchedData(req);
+
+    const session = await mongoose.startSession();
+    session.startTransaction();
 
     try {
-        const calendar = await Calendar.findOne({ _id: id });
+        const calendar = await Calendar.findOne({ _id: id }).session(session);
 
         if (!calendar) {
             throw errorHandler(404, 'Calendar not found when trying to update SubCalendar');
@@ -262,15 +265,25 @@ export const updateSubCalendar = async (req, res, next) => {
         if (title !== undefined) subCalendar.title = title;
         if (date !== undefined) subCalendar.date = date;
         if (content !== undefined) subCalendar.content = content;
+        subCalendar.variables = variables;
 
-        const updateResult = await calendar.save();
+        // Calendar'ın variables listesini güncelle
+        const newVariables = Object.keys(variables);
+        calendar.variables = newVariables;
+
+        const updateResult = await calendar.save({ session });
 
         if (!updateResult) {
             throw errorHandler(500, 'SubCalendar update failed');
         }
 
+        await session.commitTransaction();
+        session.endSession();
+
         res.status(200).json(sendSuccessResponse(200, 'SubCalendar updated successfully', subCalendar));
     } catch (error) {
+        await session.abortTransaction();
+        session.endSession();
         next(error);
     }
 }
@@ -297,6 +310,39 @@ export const getSubCalendar = async (req, res, next) => {
         }
 
         res.status(200).json(sendSuccessResponse(200, 'SubCalendar fetched successfully', subCalendar));
+    } catch (error) {
+        next(error);
+    }
+}
+
+
+export const getCalendarVariables = async (req, res, next) => {
+
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return next(errorHandler(400, 'Validation fails when trying to get calendar', errors.array()));
+    }
+    const { id } = matchedData(req, { locations: ['params'] });
+
+    try {
+        const calendar = await Calendar.findOne({ _id: id });
+
+        if (!calendar) {
+            throw errorHandler(404, 'Calendar not found when trying to fetch Calendar');
+        }
+
+        if (calendar.userID.toString() !== req.user.id) {
+            throw errorHandler(403, 'Unauthorized Access when trying to fetch Calendar');
+        }
+
+        const result = calendar.calendars
+        .filter(subCalendar => subCalendar.variables && subCalendar.variables.size > 0)
+        .map(subCalendar => ({
+            date: subCalendar.date,
+            variables: subCalendar.variables
+        }));
+
+        res.status(200).json(sendSuccessResponse(200, 'Calendar has been fetched...', result));
     } catch (error) {
         next(error);
     }

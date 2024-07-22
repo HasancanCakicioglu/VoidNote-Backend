@@ -32,5 +32,10 @@ export const updateTreeValidationSchema = {
         required: false,
         optional: { nullable: true ,max:50}
     },
+    variables: {
+        in: ['body'],
+        optional: { nullable: true },
+        required: false
+    }
 
 };

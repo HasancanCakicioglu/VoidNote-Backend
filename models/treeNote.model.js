@@ -5,6 +5,11 @@ const treeNoteSchema = new mongoose.Schema({
     title: { type: String, default: ''},
     content: { type: String,default: ''},
     parent: { type: mongoose.Schema.Types.ObjectId, ref: 'Tree' },
+    variables: {
+        type: Map,
+        of: [Number],
+        default: {}
+    }
 }, { timestamps: true });
 
 

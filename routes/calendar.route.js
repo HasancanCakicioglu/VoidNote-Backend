@@ -2,7 +2,7 @@ import express from 'express';
 import { checkSchema } from 'express-validator';
 import { IdValidationSchema } from '../validation/id_val.js';
 import { verifyToken } from '../middleware/verifyUser.js';
-import { createCalendar, createSubCalendar, deleteCalendar, deleteSubCalendar, getCalendar, getSubCalendar, updateCalendar, updateSubCalendar } from '../controllers/calendar.controller.js';
+import { createCalendar, createSubCalendar, deleteCalendar, deleteSubCalendar, getCalendar, getCalendarVariables, getSubCalendar, updateCalendar, updateSubCalendar } from '../controllers/calendar.controller.js';
 import { updateCalenderValidationSchema } from '../validation/calendar/updateCalendar.js';
 import { createSubCalenderValidationSchema } from '../validation/calendar/createSubCalendar.js';
 import { updateSubCalenderValidationSchema } from '../validation/calendar/updateSubCalendar.js';
@@ -15,6 +15,7 @@ const router = express.Router();
 
 router.post('/create',verifyToken,createCalendar);
 router.get('/get/:id',verifyToken,checkSchema(IdValidationSchema),getCalendar);
+router.get('/get/variable/:id',verifyToken,checkSchema(IdValidationSchema),getCalendarVariables);
 router.delete('/delete/:id', verifyToken,checkSchema(IdValidationSchema),deleteCalendar);
 router.post('/update/:id',verifyToken, checkSchema(updateCalenderValidationSchema),updateCalendar);
 
