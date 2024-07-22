@@ -246,17 +246,18 @@ export const google = async (req, res, next) => {
   if (!errors.isEmpty()) {
     return next(errorHandler(400, 'Validation failed', errors.array()));
   }
-  const authorizationHeader = req.headers.authorization;
-
-  const accessToken = authorizationHeader.split(' ')[1];
-  console.log(accessToken);
-  const tokenInfo = await oAuth2Client.verifyIdToken({
-    idToken: accessToken,
-    audience: process.env.GOOGLE_CLIENT_ID, // Google Client ID'nizi buraya ekleyin
-  });
-
 
   try {
+    const authorizationHeader = req.headers.authorization;
+
+    const accessToken = authorizationHeader.split(' ')[1];
+  
+    const tokenInfo = await oAuth2Client.verifyIdToken({
+      idToken: accessToken,
+      audience: process.env.GOOGLE_CLIENT_ID, // Google Client ID'nizi buraya ekleyin
+    });
+
+    
     const user = await User.findOne({ email: tokenInfo.payload.email });
     if (user) {
       const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET);
@@ -268,7 +269,7 @@ export const google = async (req, res, next) => {
           expires: expiryDate,
         })
         .status(200)
-        .json(rest);
+        .json(sendSuccessResponse(200, "Login successful", rest));
     } else {
       const generatedPassword =
         Math.random().toString(36).slice(-8) +
@@ -292,7 +293,7 @@ export const google = async (req, res, next) => {
           expires: expiryDate,
         })
         .status(200)
-        .json(rest);
+        .json(sendSuccessResponse(200, "Login successful", rest));
     }
   } catch (error) {
     next(error);
