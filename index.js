@@ -11,6 +11,7 @@ import connectMongoDB from './config/mongoose.js';
 import helmet from "helmet";
 import cors from "cors";
 import { createTransporter } from './config/nodemailer.js';
+import bodyParser from 'body-parser';
 
 
 // Connect to MongoDB
@@ -24,6 +25,8 @@ const app = express();
 
 
 // Middleware
+app.use(bodyParser.json({ limit: '20kb' }));
+app.use(bodyParser.urlencoded({ extended: true, limit: '20kb' }));
 app.use(express.json());
 app.use(cookieParser());
 app.use(helmet());
