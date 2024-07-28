@@ -222,8 +222,6 @@ export const updateTreeNote = async (req, res, next) => {
 
 
 export const getTreeNoteVariable = async (req, res, next) => {
-    console.log("getTreeNoteVariable");
-
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
         return next(errorHandler(400, 'Validation fails when trying to fetch tree', errors.array()));
