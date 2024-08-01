@@ -161,7 +161,7 @@ export const updateCalendar = async (req, res, next) => {
 
         await session.commitTransaction();
         session.endSession();
-        res.status(200).json({ message: 'Calendar updated successfully' });
+        res.status(200).json(sendSuccessResponse(200, 'Calendar has been updated...'));
     } catch (error) {
         await session.abortTransaction();
         session.endSession();
