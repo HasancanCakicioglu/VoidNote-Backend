@@ -1,87 +1,60 @@
-# MERN Authentication Backend Project
+# VoidNote-Backend
 
-This project is a nodejs backend built for MERN (MongoDB, Express.js, React.js, Node.js) stack. It provides user authentication functionality, allowing users to sign up, sign in, and access protected routes using JSON Web Tokens (JWT).
+VoidNote is a multi-purpose note-taking application that allows users to create and manage various types of notes and analyze them. This repository contains the backend of the application, built with Node.js and Express, using MongoDB as the database.
 
 ## Features
 
-- User registration (Sign Up)
-- User authentication (Sign In)
-- Access control with JWT
-- Protected routes for authenticated users
-- Password hashing with bcrypt.js
-- MongoDB database integration with Mongoose ODM
+- **API Endpoints:** Provides API endpoints to manage different types of notes (normal notes, tree notes, calendar notes, to-do lists) and variables.
+- **Authentication:** Supports Google OAuth and email/password authentication.
+- **Database Integration:** Uses MongoDB to store notes and user data.
+- **Graph Generation:** Generates graphs based on user-defined variables and note data.
 
-## Technologies Used
+## Getting Started
 
-- MongoDB: A NoSQL database for storing user data.
-- Express.js: A backend web application framework for Node.js.
-- Node.js: A JavaScript runtime environment for executing server-side code.
-- JWT (JSON Web Tokens): A compact, URL-safe means of representing claims to be transferred between two parties.
-- bcrypt.js: A library to help hash passwords securely.
+Follow these instructions to set up and run the backend server locally.
 
-## Installation
+### Prerequisites
+
+- Node.js (version 14 or above)
+- npm (version 6 or above) or yarn
+- MongoDB (local instance or cloud-based)
+
+### Installation
 
 1. Clone the repository:
 
-   ```bash
-   git clone https://github.com/HasancanCakicioglu/mern-auth-backend.git
-   ```
+    ```bash
+    git clone https://github.com/HasancanCakicioglu/VoidNote-Backend.git
+    cd VoidNote-Backend
+    ```
 
-2. Navigate to the project directory:
+2. Install dependencies:
 
-   ```bash
-   cd mern-auth-backend
-   ```
+    ```bash
+    npm install
+    # or
+    yarn install
+    ```
 
-3. Install dependencies for the backend:
+### Configuration
 
-   ```bash
-   npm install
-   ```
+1. Create a `.env` file in the root directory and add the following environment variables:
 
-4. Set up environment variables:
+    ```env
+    MONGO_URI=your_mongodb_uri
+    PORT=port number
+    JWT_SECRET=your_jwt_secret
+    GOOGLE_CLIENT_ID=your_google_client_id
+    GOOGLE_CLIENT_SECRET=your_google_client_secret
+    EMAIL_USER=your_email_user
+    EMAIL_PASS=your_email_password
+    ```
 
-   - Create a `.env` file in the root directory.
-   - Define the following environment variables:
-     ```
-     MONGODB_URI=<your_mongodb_uri>
-     JWT_SECRET=<your_jwt_secret>
-     PORT=<your_port>
-     ```
+### Running the Server
 
-5. Start the development server:
+Start the development server:
 
-   ```bash
-   npm run dev
-   ```
-
-6. Access the application in your browser at `http://localhost:3000`.
-
-## Usage
-
-- Register a new user by providing a username, email, and password.
-- Sign in with your registered email and password to access protected routes.
-- After signing in, you'll receive a JWT token, which you can use to access protected routes.
-- Access protected routes by including the JWT token in the request headers (e.g., `Authorization: Bearer <token>`).
-
-## Contributing
-
-Contributions are welcome! If you'd like to contribute to this project, please follow these steps:
-
-1. Fork the repository.
-2. Create a new branch (`git checkout -b feature/my-feature`).
-3. Make your changes and commit them (`git commit -am 'Add new feature'`).
-4. Push to the branch (`git push origin feature/my-feature`).
-5. Create a new pull request.
-
-## License
-
-This project is licensed under the [MIT License](LICENSE).
-
-## Acknowledgements
-
-- [MongoDB](https://www.mongodb.com/)
-- [Express.js](https://expressjs.com/)
-- [Node.js](https://nodejs.org/)
-- [jsonwebtoken](https://www.npmjs.com/package/jsonwebtoken)
-- [bcrypt.js](https://www.npmjs.com/package/bcryptjs)
+```bash
+npm run dev
+# or
+yarn dev
